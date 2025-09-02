@@ -1,0 +1,261 @@
+# Development Guide
+
+This guide helps you develop and maintain this NixOS configuration.
+
+## Quick Start
+
+### Enter Development Shell
+
+```bash
+# Recommended: Use the specialized NixOS config development shell
+task shell:nixos
+
+# Or use nix directly
+nix develop '.#nixos'
+
+# For quick access, just run (uses default shell)
+nix develop
+```
+
+### Available Development Shells
+
+| Shell | Command | Purpose |
+|-------|---------|---------|
+| **nixos** | `task shell:nixos` | NixOS configuration development (recommended for this project) |
+| typescript | `task shell:typescript` | Node.js, TypeScript, pnpm, yarn, bun, deno |
+| python | `task shell:python` | Python 3.12, poetry, jupyter |
+| rust | `task shell:rust` | Rust, cargo, clippy |
+| go | `task shell:go` | Go, gopls, tools |
+| cpp | `task shell:cpp` | GCC, Clang, CMake |
+| database | `task shell:database` | PostgreSQL, MySQL, Redis, MongoDB |
+| datascience | `task shell:datascience` | Python with ML/DS packages, R, Julia |
+| devops | `task shell:devops` | Kubernetes, Terraform, cloud tools |
+| mobile | `task shell:mobile` | React Native, Flutter |
+| security | `task shell:security` | Security testing tools |
+
+## NixOS Development Shell Tools
+
+The `nixos` shell includes everything needed for this project:
+
+### Nix Tools
+- **nixpkgs-fmt** - Format nix files
+- **nil** - Nix language server
+- **statix** - Lint nix files  
+- **deadnix** - Find dead nix code
+- **nix-tree** - Visualize dependencies
+- **nix-diff** - Compare derivations
+- **nvd** - Nix version diff
+
+### Task Automation
+- **task** - Task runner (run `task --list-all`)
+
+### Secrets Management
+- **sops** - Encrypt/decrypt secrets
+- **age** - Encryption tool
+- **ssh-to-age** - Convert SSH to age keys
+
+### Git Tools
+- **git** - Version control
+- **gh** - GitHub CLI
+- **git-crypt** - File encryption
+
+### System Utilities
+- **jq/yq** - JSON/YAML processing
+- **ripgrep** - Fast search
+- **fd** - Fast find
+- **bat** - Better cat
+- **eza** - Better ls
+- **htop/btop** - Process monitoring
+- **ncdu** - Disk usage
+
+## Common Development Tasks
+
+### Testing & Validation
+
+```bash
+# Run all tests
+task test
+
+# Check specific things
+task test:flake      # Validate flake
+task test:flake:all  # Check all systems
+task test:format     # Check formatting
+```
+
+### Code Quality
+
+```bash
+# Format all nix files
+task format
+
+# Find dead code
+deadnix
+
+# Lint nix files
+statix check
+
+# Check for issues
+nil diagnostics .
+```
+
+### Dependency Analysis
+
+```bash
+# Visualize dependencies
+nix-tree
+
+# Compare versions
+nvd diff /run/current-system result
+
+# Show dependency graph
+nix-store -q --graph $(nix-build) | dot -Tpng > graph.png
+```
+
+### Working with Secrets
+
+```bash
+# Edit secrets
+sops secrets/v2ray.yaml
+
+# Configure V2Ray
+task v2ray:config URL='vless://...'
+
+# Create age key
+age-keygen -o ~/.config/sops/age/keys.txt
+```
+
+### Git Workflow
+
+```bash
+# Check status
+task git:status
+
+# Commit changes
+task git:commit MSG="feat: add feature"
+
+# Auto-commit for rebuild
+task git:commit:rebuild
+```
+
+## File Structure
+
+```
+.
+├── flake.nix           # Main configuration entry
+├── Taskfile.yml        # Task automation
+├── hosts/nixos/        # Host-specific config
+├── modules/            # Modular configuration
+├── users/semyenov/     # User configuration
+├── secrets/            # Encrypted secrets
+├── shells.nix          # Development shells
+└── tasks/              # Task modules
+```
+
+## Tips & Tricks
+
+### Shell Aliases (in nixos shell)
+
+The nixos development shell sets up these aliases:
+- `ll` → `eza -la --icons`
+- `cat` → `bat`
+- `find` → `fd`
+- `grep` → `rg`
+
+### Quick Edits
+
+```bash
+# Find nix files
+fd -e nix
+
+# Search in nix files
+rg "services\." -t nix
+
+# View file with syntax highlighting
+bat modules/services/docker.nix
+```
+
+### Debugging
+
+```bash
+# Check what changed
+git diff
+
+# See build logs
+nix log /nix/store/...
+
+# Debug evaluation
+nix eval .#nixosConfigurations.nixos.config.services
+
+# Check option docs
+man configuration.nix
+```
+
+## Best Practices
+
+1. **Always test before rebuild**
+   ```bash
+   task test && task rebuild
+   ```
+
+2. **Use the nixos shell for development**
+   - Has all necessary tools
+   - Consistent environment
+   - No need to install tools globally
+
+3. **Format code before committing**
+   ```bash
+   task format
+   git add -A
+   task git:commit MSG="your message"
+   ```
+
+4. **Keep flake.lock updated**
+   ```bash
+   task update
+   task test
+   task rebuild
+   ```
+
+5. **Document module options**
+   - Add descriptions to options
+   - Include examples
+   - Note dependencies
+
+## Troubleshooting
+
+### Shell not working?
+
+```bash
+# Add experimental features to your nix config
+echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
+
+# Or use with flags
+nix --extra-experimental-features 'nix-command flakes' develop
+```
+
+### Build failures?
+
+```bash
+# Get detailed trace
+task rebuild:trace
+
+# Check flake
+task test:flake:all
+
+# Clean and retry
+task clean
+task rebuild
+```
+
+### Need help?
+
+```bash
+# List all tasks
+task --list-all
+
+# Get task details
+task --summary <task-name>
+
+# Check this guide
+cat DEVELOPMENT.md
+```
