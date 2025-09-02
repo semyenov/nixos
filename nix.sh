@@ -2,191 +2,84 @@
 # Unified NixOS Management Script
 # Single entrypoint for all NixOS configuration operations
 
-# Source common library
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Source common library and new modules
+NIX_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/lib/common.sh
-source "$SCRIPT_DIR/scripts/lib/common.sh"
+source "$NIX_SCRIPT_DIR/scripts/lib/common.sh"
+# shellcheck source=scripts/lib/dry-run.sh
+source "$NIX_SCRIPT_DIR/scripts/lib/dry-run.sh"
+# shellcheck source=scripts/lib/help.sh
+source "$NIX_SCRIPT_DIR/scripts/lib/help.sh"
+# shellcheck source=scripts/lib/options.sh
+source "$NIX_SCRIPT_DIR/scripts/lib/options.sh"
+# shellcheck source=scripts/lib/git.sh
+source "$NIX_SCRIPT_DIR/scripts/lib/git.sh"
+# shellcheck source=scripts/lib/tests.sh
+source "$NIX_SCRIPT_DIR/scripts/lib/tests.sh"
+# shellcheck source=scripts/lib/errors.sh
+source "$NIX_SCRIPT_DIR/scripts/lib/errors.sh"
 
 # Script configuration
 readonly SCRIPT_NAME="NixOS Manager"
-readonly VERSION="2.0.0"
+readonly VERSION="2.1.0"
 readonly FLAKE_PATH="${FLAKE_PATH:-$PROJECT_ROOT}"
 readonly HOSTNAME="${HOSTNAME:-nixos}"
 readonly FLAKE_REF="${FLAKE_PATH}#${HOSTNAME}"
 
-# Global options
+# Global options (will be set by option parser)
 DRY_RUN=false
 VERBOSE=false
 FORCE=false
 AUTO_YES=false
 
 # ========================
-# Help and Usage
-# ========================
-
-show_usage() {
-    cat <<EOF
-${COLOR_BLUE}$SCRIPT_NAME v$VERSION${COLOR_RESET}
-Unified management tool for NixOS configuration
-
-${COLOR_YELLOW}Usage:${COLOR_RESET}
-    $(basename "$0") [COMMAND] [OPTIONS]
-
-${COLOR_YELLOW}Commands:${COLOR_RESET}
-    rebuild     Rebuild NixOS configuration (default)
-    setup       Initial system setup wizard
-    test        Validate configuration
-    update      Update flake inputs
-    clean       Clean old generations and optimize store
-    rollback    Rollback to previous generation
-    sops        Setup SOPS encryption
-    help        Show this help message
-
-${COLOR_YELLOW}Common Options:${COLOR_RESET}
-    -h, --help      Show help for command
-    -v, --verbose   Enable verbose output
-    -n, --dry-run   Show what would be done
-    -f, --force     Skip confirmations
-    -y, --yes       Auto-answer yes to prompts
-
-${COLOR_YELLOW}Examples:${COLOR_RESET}
-    # Quick rebuild (default command)
-    $(basename "$0")
-    
-    # Setup new system
-    $(basename "$0") setup
-    
-    # Test configuration
-    $(basename "$0") test
-    
-    # Update and rebuild
-    $(basename "$0") update && $(basename "$0") rebuild
-    
-    # Clean system
-    $(basename "$0") clean
-
-${COLOR_YELLOW}Quick Tips:${COLOR_RESET}
-    - Default command is 'rebuild' when no command specified
-    - Git changes are auto-staged before rebuild
-    - Use -n for dry-run to preview changes
-    - Configuration lives in: $FLAKE_PATH
-
-For command-specific help: $(basename "$0") [COMMAND] --help
-EOF
-}
-
-# ========================
 # Rebuild Command
 # ========================
 
 cmd_rebuild() {
-    local operation="switch"
-    local upgrade=false
-    local no_stage=false
-    local no_commit=false
-    
-    # Parse rebuild-specific options
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            -h|--help)
-                cat <<EOF
-${COLOR_BLUE}Rebuild Command${COLOR_RESET}
-Rebuild and switch to new NixOS configuration
-
-${COLOR_YELLOW}Usage:${COLOR_RESET}
-    $(basename "$0") rebuild [OPTIONS] [OPERATION]
-
-${COLOR_YELLOW}Operations:${COLOR_RESET}
-    switch      Switch to new configuration (default)
-    test        Test configuration without making default
-    boot        Update boot configuration only
-    dry-build   Build without switching
-
-${COLOR_YELLOW}Options:${COLOR_RESET}
-    -u, --upgrade       Update flake inputs before rebuild
-    --no-stage          Don't auto-stage git changes
-    --no-commit         Don't auto-commit changes
-    --show-trace        Show full error trace
-
-${COLOR_YELLOW}Examples:${COLOR_RESET}
-    # Quick rebuild
-    $(basename "$0") rebuild
-    
-    # Test configuration
-    $(basename "$0") rebuild test
-    
-    # Upgrade and rebuild
-    $(basename "$0") rebuild -u
-EOF
-                return 0
-                ;;
-            -u|--upgrade) upgrade=true ;;
-            --no-stage) no_stage=true ;;
-            --no-commit) no_commit=true ;;
-            --show-trace) VERBOSE=true ;;
-            switch|test|boot|dry-build) operation="$1" ;;
-            *) log_error "Unknown rebuild option: $1"; return 1 ;;
-        esac
-        shift
-    done
-    
-    print_header "NixOS Rebuild: $operation"
-    
-    # Check git status and auto-stage if needed
-    if [[ "$no_stage" != "true" ]] && git rev-parse --git-dir >/dev/null 2>&1; then
-        local modified
-        modified=$(git status --porcelain | wc -l)
-        
-        if [[ $modified -gt 0 ]]; then
-            log_info "Found $modified modified files"
-            if [[ "$DRY_RUN" == "false" ]]; then
-                git add -A
-                print_success "Changes staged"
-                
-                if [[ "$no_commit" != "true" ]] && [[ $(git diff --cached | wc -l) -gt 0 ]]; then
-                    git commit -m "Auto-commit: Configuration update $(date +%Y-%m-%d)" >/dev/null
-                    print_success "Changes committed"
-                fi
-            else
-                log_info "[DRY RUN] Would stage $modified files"
-            fi
-        fi
+    # Check for help first
+    if is_help_requested "$@"; then
+        show_rebuild_help
+        return 0
     fi
     
+    # Parse options
+    parse_rebuild_options "$@"
+    
+    print_header "NixOS Rebuild: ${REBUILD_OPERATION}"
+    show_dry_run_warning
+    
+    # Prepare git repository
+    prepare_git_for_rebuild "$REBUILD_NO_STAGE" "$REBUILD_NO_COMMIT"
+    
     # Update flake if requested
-    if [[ "$upgrade" == "true" ]]; then
+    if [[ "$REBUILD_UPGRADE" == "true" ]]; then
         log_info "Updating flake inputs..."
-        if [[ "$DRY_RUN" == "false" ]]; then
-            nix flake update "$FLAKE_PATH"
-            git add "$FLAKE_PATH/flake.lock"
-            print_success "Flake inputs updated"
-        else
-            log_info "[DRY RUN] Would update flake inputs"
-        fi
+        run_nix "flake update '$FLAKE_PATH'" "Update flake inputs"
+        add_file_to_git "$FLAKE_PATH/flake.lock"
+        print_success "Flake inputs updated"
     fi
     
     # Check disk space
     local available
     available=$(df /nix/store | tail -1 | awk '{print $4}')
     if [[ $available -lt 5000000 ]]; then
-        log_warn "Low disk space in /nix/store"
+        error_disk_space_low "$available"
         if confirm "Run garbage collection?" "y"; then
             cmd_clean
         fi
     fi
     
     # Perform rebuild
-    local rebuild_args=("$operation" "--flake" "$FLAKE_REF")
-    [[ "$VERBOSE" == "true" ]] && rebuild_args+=("--show-trace")
+    local rebuild_args=("$REBUILD_OPERATION" "--flake" "$FLAKE_REF")
+    [[ "$REBUILD_SHOW_TRACE" == "true" ]] && rebuild_args+=("--show-trace")
     
-    if [[ "$DRY_RUN" == "true" ]]; then
-        log_info "[DRY RUN] Would run: sudo nixos-rebuild ${rebuild_args[*]}"
-    else
-        log_info "Building configuration..."
-        if sudo nixos-rebuild "${rebuild_args[@]}"; then
-            print_success "Rebuild successful!"
-            
-            # Show new generation
+    log_info "Building configuration..."
+    if run_nixos_rebuild "$REBUILD_OPERATION" "${rebuild_args[*]:1}"; then
+        print_success "Rebuild successful!"
+        
+        # Show new generation
+        if ! is_dry_run; then
             local new_gen
             new_gen=$(sudo nix-env --list-generations --profile /nix/var/nix/profiles/system | tail -1)
             log_info "New generation: $new_gen"
@@ -199,10 +92,10 @@ EOF
             if [[ "$current_kernel" != *"$running_kernel"* ]]; then
                 log_warn "Kernel updated. Reboot recommended."
             fi
-        else
-            print_error "Rebuild failed!"
-            return 1
         fi
+    else
+        error_build_failed
+        return 1
     fi
 }
 
@@ -211,119 +104,77 @@ EOF
 # ========================
 
 cmd_setup() {
-    local skip_hardware=false
-    local skip_sops=false
-    local skip_test=false
-    local skip_build=false
+    # Check for help first
+    if is_help_requested "$@"; then
+        show_setup_help
+        return 0
+    fi
     
-    # Parse setup-specific options
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            -h|--help)
-                cat <<EOF
-${COLOR_BLUE}Setup Command${COLOR_RESET}
-Initial NixOS configuration setup wizard
-
-${COLOR_YELLOW}Usage:${COLOR_RESET}
-    $(basename "$0") setup [OPTIONS]
-
-${COLOR_YELLOW}Options:${COLOR_RESET}
-    --skip-hardware     Skip hardware configuration
-    --skip-sops         Skip SOPS setup
-    --skip-test         Skip configuration testing
-    --skip-build        Skip configuration build
-    -q, --quick         Quick setup (auto-yes to all)
-
-${COLOR_YELLOW}Setup Steps:${COLOR_RESET}
-    1. Check prerequisites
-    2. Generate hardware configuration
-    3. Setup SOPS encryption
-    4. Test configuration
-    5. Build configuration
-    6. Apply configuration (optional)
-
-${COLOR_YELLOW}Examples:${COLOR_RESET}
-    # Full interactive setup
-    $(basename "$0") setup
-    
-    # Quick setup (auto-yes)
-    $(basename "$0") setup -q
-    
-    # Only SOPS setup
-    $(basename "$0") setup --skip-hardware --skip-test --skip-build
-EOF
-                return 0
-                ;;
-            --skip-hardware) skip_hardware=true ;;
-            --skip-sops) skip_sops=true ;;
-            --skip-test) skip_test=true ;;
-            --skip-build) skip_build=true ;;
-            -q|--quick) AUTO_YES=true ;;
-            *) log_error "Unknown setup option: $1"; return 1 ;;
-        esac
-        shift
-    done
+    # Parse options
+    parse_setup_options "$@"
     
     print_header "NixOS Setup Wizard"
+    show_dry_run_warning
     
     # Check prerequisites
     log_info "Checking prerequisites..."
-    check_requirements git age ssh-to-age sops nix || return 1
+    if ! check_requirements git age ssh-to-age sops nix; then
+        error_command_not_found "missing requirements" "see above"
+        return 1
+    fi
     
     if [[ ! -f "flake.nix" ]]; then
-        log_error "flake.nix not found"
-        log_info "Please ensure you're in the NixOS configuration directory"
+        error_flake_missing
         return 1
     fi
     print_success "Prerequisites satisfied"
     
+    # Initialize git if needed
+    init_git_repo || return 1
+    
     # Generate hardware configuration
-    if [[ "$skip_hardware" != "true" ]]; then
+    if [[ "$SETUP_SKIP_HARDWARE" != "true" ]]; then
         local hw_config="hosts/nixos/hardware-configuration.nix"
         
         if [[ -f "$hw_config" ]]; then
             log_warn "Hardware configuration exists"
             if confirm "Regenerate hardware configuration?" "n"; then
-                if [[ "$DRY_RUN" == "false" ]]; then
-                    sudo nixos-generate-config --dir "$(dirname "$hw_config")"
-                    git add "$hw_config" 2>/dev/null || true
-                fi
+                run_sudo "nixos-generate-config --dir '$(dirname "$hw_config")'" \
+                    "Generate hardware configuration"
+                add_file_to_git "$hw_config"
             fi
         else
             log_info "Generating hardware configuration..."
-            if [[ "$DRY_RUN" == "false" ]]; then
-                mkdir -p "$(dirname "$hw_config")"
-                sudo nixos-generate-config --dir "$(dirname "$hw_config")"
-                git add "$hw_config" 2>/dev/null || true
-            fi
+            run_file_op "mkdir" "$(dirname "$hw_config")" "Create hosts/nixos directory"
+            run_sudo "nixos-generate-config --dir '$(dirname "$hw_config")'" \
+                "Generate hardware configuration"
+            add_file_to_git "$hw_config"
         fi
         print_success "Hardware configuration ready"
     fi
     
     # Setup SOPS
-    if [[ "$skip_sops" != "true" ]]; then
+    if [[ "$SETUP_SKIP_SOPS" != "true" ]]; then
         cmd_sops
     fi
     
     # Test configuration
-    if [[ "$skip_test" != "true" ]]; then
+    if [[ "$SETUP_SKIP_TEST" != "true" ]]; then
         log_info "Testing configuration..."
-        if [[ "$DRY_RUN" == "false" ]]; then
+        if ! is_dry_run; then
             if nix flake check --no-build 2>/dev/null; then
                 print_success "Configuration valid"
             else
-                log_error "Configuration validation failed"
+                error_test_failed "flake"
                 return 1
             fi
         fi
     fi
     
     # Build configuration
-    if [[ "$skip_build" != "true" ]]; then
+    if [[ "$SETUP_SKIP_BUILD" != "true" ]]; then
         if confirm "Build configuration?" "y"; then
-            if [[ "$DRY_RUN" == "false" ]]; then
-                sudo nixos-rebuild build --flake "$FLAKE_REF"
-            fi
+            run_nixos_rebuild "build" "--flake '$FLAKE_REF'"
             print_success "Configuration built"
         fi
     fi
@@ -344,130 +195,48 @@ EOF
 # ========================
 
 cmd_test() {
-    local tests_to_run=()
-    local parallel=true
-    local fail_fast=false
-    local format="terminal"
+    # Check for help first
+    if is_help_requested "$@"; then
+        show_test_help
+        return 0
+    fi
     
-    # Parse test-specific options
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            -h|--help)
-                cat <<EOF
-${COLOR_BLUE}Test Command${COLOR_RESET}
-Validate NixOS configuration
-
-${COLOR_YELLOW}Usage:${COLOR_RESET}
-    $(basename "$0") test [OPTIONS] [TESTS...]
-
-${COLOR_YELLOW}Available Tests:${COLOR_RESET}
-    all         Run all tests (default)
-    syntax      Check Nix syntax
-    flake       Validate flake structure
-    build       Test configuration build
-    modules     Check module imports
-    secrets     Validate secrets configuration
-    hardware    Check hardware configuration
-    security    Check security settings
-
-${COLOR_YELLOW}Options:${COLOR_RESET}
-    -s, --sequential    Run tests sequentially
-    -f, --fail-fast     Stop on first failure
-    --format FORMAT     Output format (terminal, json, xml)
-
-${COLOR_YELLOW}Examples:${COLOR_RESET}
-    # Run all tests
-    $(basename "$0") test
-    
-    # Run specific tests
-    $(basename "$0") test syntax flake
-    
-    # Quick validation with fail-fast
-    $(basename "$0") test -f
-EOF
-                return 0
-                ;;
-            -s|--sequential) parallel=false ;;
-            -f|--fail-fast) fail_fast=true; parallel=false ;;
-            --format) shift; format="$1" ;;
-            all) tests_to_run=(syntax flake build modules secrets hardware security) ;;
-            syntax|flake|build|modules|secrets|hardware|security)
-                tests_to_run+=("$1") ;;
-            *) 
-                # Unknown option, might be a test name
-                if [[ "$1" =~ ^- ]]; then
-                    log_error "Unknown option: $1"
-                    return 1
-                else
-                    log_error "Unknown test: $1"
-                    return 1
-                fi
-                ;;
-        esac
-        shift
-    done
-    
-    # Default to all tests
-    [[ ${#tests_to_run[@]} -eq 0 ]] && tests_to_run=(syntax flake build modules secrets hardware security)
+    # Parse options
+    parse_test_options "$@"
     
     print_header "Configuration Validation"
+    show_dry_run_warning
     
     local passed=0
     local failed=0
     local skipped=0
     
-    # Test functions
-    test_syntax() {
-        find . -name "*.nix" -type f -exec nix-instantiate --parse {} \; >/dev/null 2>&1
-    }
-    
-    test_flake() {
-        [[ -f "flake.nix" ]] && nix flake check --no-build 2>/dev/null
-    }
-    
-    test_build() {
-        command_exists nixos-rebuild && sudo nixos-rebuild dry-build --flake "$FLAKE_REF" 2>/dev/null
-    }
-    
-    test_modules() {
-        nix-instantiate --eval -E "(import ./flake.nix).nixosConfigurations.nixos.config" >/dev/null 2>&1
-    }
-    
-    test_secrets() {
-        [[ -f ".sops.yaml" ]] && grep -q "age1" .sops.yaml
-    }
-    
-    test_hardware() {
-        local hw_config="hosts/nixos/hardware-configuration.nix"
-        [[ -f "$hw_config" ]] || hw_config="hardware-configuration.nix"
-        [[ -f "$hw_config" ]] && nix-instantiate --parse "$hw_config" >/dev/null 2>&1
-    }
-    
-    test_security() {
-        ! grep -r "password\|secret\|token\|key" --include="*.nix" | \
-            grep -v "sops\|age\|ssh\|gnupg\|passwordAuthentication" | \
-            grep "=" >/dev/null 2>&1
-    }
+    # Convert test list string to array
+    IFS=' ' read -ra tests_to_run <<< "$TEST_TO_RUN"
     
     # Run tests
     for test in "${tests_to_run[@]}"; do
-        if [[ "$DRY_RUN" == "true" ]]; then
+        if is_dry_run; then
             log_info "[DRY RUN] Would run test: $test"
         else
-            if test_"$test" 2>/dev/null; then
-                print_success "$test"
-                ((passed++))
-            else
-                print_error "$test"
-                ((failed++))
-                [[ "$fail_fast" == "true" ]] && break
-            fi
+            local result
+            run_single_test "test_$test" "$test"
+            result=$?
+            
+            case $result in
+                0) ((passed++)) ;;
+                2) ((skipped++)) ;;
+                *) 
+                    ((failed++))
+                    [[ "$TEST_FAIL_FAST" == "true" ]] && break
+                    ;;
+            esac
         fi
     done
     
     # Summary
     echo
-    if [[ "$format" == "terminal" ]]; then
+    if [[ "$TEST_FORMAT" == "terminal" ]]; then
         log_info "Tests passed: $passed"
         [[ $failed -gt 0 ]] && log_error "Tests failed: $failed"
         [[ $skipped -gt 0 ]] && log_warn "Tests skipped: $skipped"
@@ -478,7 +247,7 @@ EOF
         else
             print_success "Configuration valid!"
         fi
-    elif [[ "$format" == "json" ]]; then
+    elif [[ "$TEST_FORMAT" == "json" ]]; then
         echo "{\"passed\":$passed,\"failed\":$failed,\"skipped\":$skipped}"
     fi
 }
@@ -488,48 +257,32 @@ EOF
 # ========================
 
 cmd_update() {
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            -h|--help)
-                cat <<EOF
-${COLOR_BLUE}Update Command${COLOR_RESET}
-Update flake inputs to latest versions
-
-${COLOR_YELLOW}Usage:${COLOR_RESET}
-    $(basename "$0") update [INPUT]
-
-${COLOR_YELLOW}Examples:${COLOR_RESET}
-    # Update all inputs
-    $(basename "$0") update
+    # Check for help first
+    if is_help_requested "$@"; then
+        show_update_help
+        return 0
+    fi
     
-    # Update specific input
-    $(basename "$0") update nixpkgs
-EOF
-                return 0
-                ;;
-            *) break ;;
-        esac
-        shift
-    done
+    # Parse options
+    parse_update_options "$@"
     
     print_header "Update Flake Inputs"
+    show_dry_run_warning
     
-    if [[ "$DRY_RUN" == "true" ]]; then
-        log_info "[DRY RUN] Would update flake inputs"
+    if [[ -n "$UPDATE_INPUT" ]]; then
+        log_info "Updating input: $UPDATE_INPUT"
+        run_nix "flake lock --update-input '$UPDATE_INPUT'" "Update $UPDATE_INPUT"
     else
-        if [[ -n "$1" ]]; then
-            log_info "Updating input: $1"
-            nix flake lock --update-input "$1"
-        else
-            log_info "Updating all inputs..."
-            nix flake update
-        fi
-        
-        git add flake.lock
+        log_info "Updating all inputs..."
+        run_nix "flake update" "Update all flake inputs"
+    fi
+    
+    if ! is_dry_run; then
+        add_file_to_git "flake.lock"
         print_success "Flake inputs updated"
         
         log_info "Current inputs:"
-        nix flake metadata --json | jq -r '.locks.nodes.root.inputs | to_entries[] | "  - \(.key)"'
+        nix flake metadata --json | jq -r '.locks.nodes.root.inputs | to_entries[] | "  - \(.key)"' 2>/dev/null || true
     fi
 }
 
@@ -538,67 +291,44 @@ EOF
 # ========================
 
 cmd_clean() {
-    local keep_generations=5
+    # Check for help first
+    if is_help_requested "$@"; then
+        show_clean_help
+        return 0
+    fi
     
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            -h|--help)
-                cat <<EOF
-${COLOR_BLUE}Clean Command${COLOR_RESET}
-Clean old generations and optimize store
-
-${COLOR_YELLOW}Usage:${COLOR_RESET}
-    $(basename "$0") clean [OPTIONS]
-
-${COLOR_YELLOW}Options:${COLOR_RESET}
-    -k, --keep NUM      Keep NUM most recent generations (default: 5)
-    -a, --all           Delete all old generations
-
-${COLOR_YELLOW}Examples:${COLOR_RESET}
-    # Clean, keeping 5 recent generations
-    $(basename "$0") clean
-    
-    # Delete all old generations
-    $(basename "$0") clean -a
-EOF
-                return 0
-                ;;
-            -k|--keep) shift; keep_generations="$1" ;;
-            -a|--all) keep_generations=0 ;;
-            *) log_error "Unknown clean option: $1"; return 1 ;;
-        esac
-        shift
-    done
+    # Parse options
+    parse_clean_options "$@"
     
     print_header "System Cleanup"
+    show_dry_run_warning
     
     # Show current disk usage
     log_info "Current /nix/store usage:"
     df -h /nix/store | tail -1
     
-    if [[ "$DRY_RUN" == "true" ]]; then
-        log_info "[DRY RUN] Would clean old generations and optimize store"
+    # Delete old generations
+    if [[ $CLEAN_KEEP_GENERATIONS -eq 0 ]]; then
+        log_info "Deleting all old generations..."
+        run_sudo "nix-collect-garbage -d" "Delete all old generations"
     else
-        # Delete old generations
-        if [[ $keep_generations -eq 0 ]]; then
-            log_info "Deleting all old generations..."
-            sudo nix-collect-garbage -d
-        else
-            log_info "Keeping $keep_generations most recent generations..."
-            sudo nix-env --delete-generations +$keep_generations --profile /nix/var/nix/profiles/system
-            sudo nix-collect-garbage
-        fi
-        
-        # Optimize store
-        log_info "Optimizing Nix store..."
-        nix-store --optimise
-        
+        log_info "Keeping $CLEAN_KEEP_GENERATIONS most recent generations..."
+        run_sudo "nix-env --delete-generations +$CLEAN_KEEP_GENERATIONS --profile /nix/var/nix/profiles/system" \
+            "Delete old generations"
+        run_sudo "nix-collect-garbage" "Collect garbage"
+    fi
+    
+    # Optimize store
+    log_info "Optimizing Nix store..."
+    run_command "nix-store --optimise" "Optimize Nix store"
+    
+    if ! is_dry_run; then
         # Show new disk usage
         log_info "New /nix/store usage:"
         df -h /nix/store | tail -1
-        
-        print_success "Cleanup complete!"
     fi
+    
+    print_success "Cleanup complete!"
 }
 
 # ========================
@@ -606,28 +336,14 @@ EOF
 # ========================
 
 cmd_rollback() {
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            -h|--help)
-                cat <<EOF
-${COLOR_BLUE}Rollback Command${COLOR_RESET}
-Rollback to previous system generation
-
-${COLOR_YELLOW}Usage:${COLOR_RESET}
-    $(basename "$0") rollback
-
-${COLOR_YELLOW}Examples:${COLOR_RESET}
-    # Rollback to previous generation
-    $(basename "$0") rollback
-EOF
-                return 0
-                ;;
-            *) log_error "Unknown rollback option: $1"; return 1 ;;
-        esac
-        shift
-    done
+    # Check for help first
+    if is_help_requested "$@"; then
+        show_rollback_help
+        return 0
+    fi
     
     print_header "System Rollback"
+    show_dry_run_warning
     
     # Show current generation
     local current_gen
@@ -639,12 +355,8 @@ EOF
     sudo nix-env --list-generations --profile /nix/var/nix/profiles/system | tail -5
     
     if confirm "Rollback to previous generation?" "y"; then
-        if [[ "$DRY_RUN" == "true" ]]; then
-            log_info "[DRY RUN] Would rollback to previous generation"
-        else
-            sudo nixos-rebuild switch --rollback
-            print_success "Rollback complete!"
-        fi
+        run_nixos_rebuild "switch" "--rollback"
+        print_success "Rollback complete!"
     fi
 }
 
@@ -653,37 +365,14 @@ EOF
 # ========================
 
 cmd_sops() {
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            -h|--help)
-                cat <<EOF
-${COLOR_BLUE}SOPS Command${COLOR_RESET}
-Setup SOPS encryption for secrets management
-
-${COLOR_YELLOW}Usage:${COLOR_RESET}
-    $(basename "$0") sops
-
-${COLOR_YELLOW}Setup Steps:${COLOR_RESET}
-    1. Generate age encryption key
-    2. Extract host SSH key
-    3. Create .sops.yaml configuration
-    4. Ready to encrypt secrets
-
-${COLOR_YELLOW}Examples:${COLOR_RESET}
-    # Setup SOPS
-    $(basename "$0") sops
-    
-    # After setup, encrypt secrets with:
-    sops secrets/v2ray.yaml
-EOF
-                return 0
-                ;;
-            *) log_error "Unknown sops option: $1"; return 1 ;;
-        esac
-        shift
-    done
+    # Check for help first
+    if is_help_requested "$@"; then
+        show_sops_help
+        return 0
+    fi
     
     print_header "SOPS Encryption Setup"
+    show_dry_run_warning
     
     local age_key_file="$HOME/.config/sops/age/keys.txt"
     
@@ -693,25 +382,21 @@ EOF
         if ! confirm "Generate new age key?" "n"; then
             print_success "Using existing age key"
         else
-            if [[ "$DRY_RUN" == "false" ]]; then
-                backup_file "$age_key_file" || true
-                mkdir -p "$(dirname "$age_key_file")"
-                age-keygen -o "$age_key_file"
-            fi
+            backup_file "$age_key_file" || true
+            run_file_op "mkdir" "$(dirname "$age_key_file")" "Create age directory"
+            run_command "age-keygen -o '$age_key_file'" "Generate age key"
             print_success "New age key generated"
         fi
     else
         log_info "Generating age encryption key..."
-        if [[ "$DRY_RUN" == "false" ]]; then
-            mkdir -p "$(dirname "$age_key_file")"
-            age-keygen -o "$age_key_file"
-        fi
+        run_file_op "mkdir" "$(dirname "$age_key_file")" "Create age directory"
+        run_command "age-keygen -o '$age_key_file'" "Generate age key"
         print_success "Age key generated"
     fi
     
     # Get keys
     local user_key host_key=""
-    if [[ "$DRY_RUN" == "false" ]]; then
+    if ! is_dry_run; then
         user_key=$(grep "public key:" "$age_key_file" | cut -d: -f2 | tr -d ' ')
         [[ -f "/etc/ssh/ssh_host_ed25519_key.pub" ]] && \
             host_key=$(ssh-to-age < /etc/ssh/ssh_host_ed25519_key.pub)
@@ -721,16 +406,19 @@ EOF
     fi
     
     # Create .sops.yaml
-    if [[ "$DRY_RUN" == "false" ]]; then
-        cat > .sops.yaml <<EOF
+    local sops_content
+    sops_content=$(cat <<EOF
 # SOPS configuration - Generated $(date)
 keys:
   - &user_semyenov $user_key
 EOF
-        [[ -n "$host_key" ]] && cat >> .sops.yaml <<EOF
+)
+    [[ -n "$host_key" ]] && sops_content+=$(cat <<EOF
+
   - &host_nixos $host_key
 EOF
-        cat >> .sops.yaml <<'EOF'
+)
+    sops_content+=$(cat <<'EOF'
 
 creation_rules:
   - path_regex: secrets/[^/]+\.(yaml|json|env|ini)$
@@ -738,15 +426,168 @@ creation_rules:
       - age:
           - *user_semyenov
 EOF
-        [[ -n "$host_key" ]] && cat >> .sops.yaml <<'EOF'
+)
+    [[ -n "$host_key" ]] && sops_content+=$(cat <<'EOF'
           - *host_nixos
 EOF
-    else
-        log_info "[DRY RUN] Would create .sops.yaml"
-    fi
+)
+
+    write_file ".sops.yaml" "$sops_content" "Create .sops.yaml"
     
     print_success "SOPS configuration complete!"
     log_info "You can now encrypt secrets with: sops secrets/v2ray.yaml"
+}
+
+# ========================
+# V2Ray Config Command
+# ========================
+
+urldecode() {
+    local url_encoded="${1//+/ }"
+    printf '%b' "${url_encoded//%/\\x}"
+}
+
+cmd_v2ray_config() {
+    # Check for help first
+    if is_help_requested "$@"; then
+        cat <<EOF
+${COLOR_BLUE}V2Ray Configuration${COLOR_RESET}
+Configure V2Ray proxy from VLESS connection string
+
+${COLOR_YELLOW}Usage:${COLOR_RESET}
+    $(basename "$0") v2ray-config [OPTIONS] VLESS_URL
+
+${COLOR_YELLOW}Options:${COLOR_RESET}
+    -h, --help      Show this help message
+    -v, --verbose   Enable verbose output
+    -n, --dry-run   Show what would be done
+    -f, --force     Overwrite existing configuration
+
+${COLOR_YELLOW}Examples:${COLOR_RESET}
+    # Configure V2Ray from VLESS URL
+    $(basename "$0") v2ray-config 'vless://UUID@server:port?...'
+    
+    # Show what would be configured
+    $(basename "$0") v2ray-config -n 'vless://...'
+EOF
+        return 0
+    fi
+    
+    # Get VLESS URL from arguments
+    local vless_url=""
+    for arg in "$@"; do
+        if [[ "$arg" =~ ^vless:// ]]; then
+            vless_url="$arg"
+            break
+        fi
+    done
+    
+    if [[ -z "$vless_url" ]]; then
+        log_error "No VLESS URL provided"
+        log_info "Usage: $(basename "$0") v2ray-config 'vless://...'"
+        return 1
+    fi
+    
+    print_header "V2Ray Configuration from VLESS URL"
+    show_dry_run_warning
+    
+    # Parse VLESS URL
+    local uuid="" server="" port="" public_key="" short_id="" sni="" fingerprint="" spx=""
+    
+    # Validate URL format
+    if [[ ! "$vless_url" =~ ^vless:// ]]; then
+        log_error "Invalid VLESS URL format"
+        return 1
+    fi
+    
+    # Extract base components using regex
+    local regex='vless://([^@]+)@([^:]+):([0-9]+)'
+    if [[ "$vless_url" =~ $regex ]]; then
+        uuid="${BASH_REMATCH[1]}"
+        server="${BASH_REMATCH[2]}"
+        port="${BASH_REMATCH[3]}"
+    else
+        log_error "Failed to parse VLESS URL structure"
+        return 1
+    fi
+    
+    # Extract query string
+    local query=""
+    if [[ "$vless_url" =~ \?([^#]+) ]]; then
+        query="${BASH_REMATCH[1]}"
+    fi
+    
+    # Parse query parameters
+    if [[ -n "$query" ]]; then
+        IFS='&' read -ra params <<< "$query"
+        for param in "${params[@]}"; do
+            IFS='=' read -r key value <<< "$param"
+            case "$key" in
+                pbk) public_key="$value" ;;
+                sid) short_id="$value" ;;
+                sni) sni="$value" ;;
+                fp)  fingerprint="$value" ;;
+                spx) spx=$(urldecode "$value") ;;
+            esac
+        done
+    fi
+    
+    # Display parsed configuration
+    log_info "Parsed V2Ray configuration:"
+    echo "  Server:      $server:$port"
+    echo "  UUID:        $uuid"
+    echo "  Public Key:  $public_key"
+    echo "  Short ID:    $short_id"
+    [[ -n "$sni" ]] && echo "  SNI:         $sni"
+    [[ -n "$fingerprint" ]] && echo "  Fingerprint: $fingerprint"
+    [[ -n "$spx" ]] && echo "  SpiderX:     $spx"
+    echo
+    
+    # Check if secrets file exists
+    local secrets_file="secrets/v2ray.yaml"
+    if [[ -f "$secrets_file" ]] && [[ "$FORCE" != "true" ]]; then
+        log_warn "V2Ray secrets already exist"
+        if ! confirm "Overwrite existing configuration?" "n"; then
+            return 0
+        fi
+    fi
+    
+    # Create secrets YAML content
+    local yaml_content="# V2Ray Configuration
+# Generated from VLESS URL on $(date)
+v2ray:
+    server_address: \"$server\"
+    server_port: $port
+    user_id: \"$uuid\"
+    public_key: \"$public_key\"
+    short_id: \"${short_id:-}\""
+    
+    # Write temporary unencrypted file
+    local temp_file
+    temp_file=$(create_temp_file "v2ray.yaml.XXXXXX")
+    echo "$yaml_content" > "$temp_file"
+    
+    # Encrypt with SOPS
+    if command_exists sops; then
+        log_info "Encrypting secrets with SOPS..."
+        if run_command "sops -e -i '$temp_file'" "Encrypt V2Ray secrets"; then
+            # Move to final location
+            run_file_op "move" "$temp_file" "$secrets_file" "Save encrypted secrets"
+            print_success "V2Ray configuration saved and encrypted"
+            
+            log_info "To enable V2Ray, add to your configuration:"
+            echo "  services.v2ray.enable = true;"
+        else
+            log_error "Failed to encrypt secrets"
+            rm -f "$temp_file"
+            return 1
+        fi
+    else
+        log_warn "SOPS not available, saving unencrypted"
+        run_file_op "move" "$temp_file" "$secrets_file.plain" "Save plain secrets"
+        log_warn "Secrets saved to $secrets_file.plain (NOT ENCRYPTED)"
+        log_info "Install SOPS to enable encryption"
+    fi
 }
 
 # ========================
@@ -756,38 +597,20 @@ EOF
 main() {
     local command=""
     
-    # Parse global options and command
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            -h|--help)
-                show_usage
-                exit 0
-                ;;
-            -v|--verbose)
-                VERBOSE=true
-                LOG_LEVEL=$LOG_LEVEL_DEBUG
-                shift
-                ;;
-            -n|--dry-run)
-                DRY_RUN=true
-                shift
-                ;;
-            -f|--force)
-                FORCE=true
-                shift
-                ;;
-            -y|--yes)
-                AUTO_YES=true
-                shift
-                ;;
-            rebuild|setup|test|update|clean|rollback|sops|help)
-                command="$1"
-                shift
-                break
-                ;;
-            *)
-                # Default to rebuild if no recognized command
-                command="rebuild"
+    # Parse global options and extract command
+    local -a args
+    mapfile -t args < <(parse_common_options "$@")
+    
+    # Check if help was returned
+    for arg in "${args[@]}"; do
+        [[ "$arg" == "help" ]] && { show_main_help; exit 0; }
+    done
+    
+    # Get command from remaining args
+    for arg in "${args[@]}"; do
+        case "$arg" in
+            rebuild|setup|test|update|clean|rollback|sops|v2ray-config|help)
+                command="$arg"
                 break
                 ;;
         esac
@@ -799,22 +622,23 @@ main() {
     # Setup error handling
     setup_error_handling
     
-    # Show dry-run warning
-    [[ "$DRY_RUN" == "true" ]] && print_warning "DRY RUN MODE - No changes will be made"
+    # Show dry-run warning if applicable
+    export DRY_RUN VERBOSE FORCE AUTO_YES
     
-    # Execute command
+    # Execute command with remaining arguments
     case "$command" in
-        rebuild)  cmd_rebuild "$@" ;;
-        setup)    cmd_setup "$@" ;;
-        test)     cmd_test "$@" ;;
-        update)   cmd_update "$@" ;;
-        clean)    cmd_clean "$@" ;;
-        rollback) cmd_rollback "$@" ;;
-        sops)     cmd_sops "$@" ;;
-        help)     show_usage ;;
+        rebuild)      cmd_rebuild "${args[@]}" ;;
+        setup)        cmd_setup "${args[@]}" ;;
+        test)         cmd_test "${args[@]}" ;;
+        update)       cmd_update "${args[@]}" ;;
+        clean)        cmd_clean "${args[@]}" ;;
+        rollback)     cmd_rollback "${args[@]}" ;;
+        sops)         cmd_sops "${args[@]}" ;;
+        v2ray-config) cmd_v2ray_config "${args[@]}" ;;
+        help)         show_main_help ;;
         *)
-            log_error "Unknown command: $command"
-            show_usage
+            error_invalid_option "$command"
+            show_main_help
             exit 1
             ;;
     esac

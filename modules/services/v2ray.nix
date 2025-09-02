@@ -6,8 +6,58 @@ let
 in
 
 {
-  # V2Ray service configuration with VLESS
+  # V2Ray service configuration with VLESS and SOPS integration
   # NOTE: Set services.v2ray.enable = true in your host config to enable
+  
+  # SOPS secrets configuration when V2Ray is enabled
+  config = lib.mkIf (cfg.enable or false) {
+    # Define SOPS secrets with proper service integration
+    sops.secrets = {
+      "v2ray/server_address" = {
+        sopsFile = ../../secrets/v2ray.yaml;
+        mode = "0400";
+        owner = config.users.users.v2ray.name or "root";
+        restartUnits = [ "v2ray.service" ];
+      };
+      "v2ray/server_port" = {
+        sopsFile = ../../secrets/v2ray.yaml;
+        mode = "0400";
+        owner = config.users.users.v2ray.name or "root";
+        restartUnits = [ "v2ray.service" ];
+      };
+      "v2ray/user_id" = {
+        sopsFile = ../../secrets/v2ray.yaml;
+        mode = "0400";
+        owner = config.users.users.v2ray.name or "root";
+        restartUnits = [ "v2ray.service" ];
+      };
+      "v2ray/public_key" = {
+        sopsFile = ../../secrets/v2ray.yaml;
+        mode = "0400";
+        owner = config.users.users.v2ray.name or "root";
+        restartUnits = [ "v2ray.service" ];
+      };
+      "v2ray/short_id" = {
+        sopsFile = ../../secrets/v2ray.yaml;
+        mode = "0400";
+        owner = config.users.users.v2ray.name or "root";
+        restartUnits = [ "v2ray.service" ];
+      };
+    };
+
+    # Ensure V2Ray service waits for secrets to be available
+    systemd.services.v2ray = {
+      after = [ "sops-nix.service" ];
+      wants = [ "sops-nix.service" ];
+      
+      # Add assertions to ensure secrets exist
+      serviceConfig = {
+        ExecStartPre = "${pkgs.coreutils}/bin/test -f ${config.sops.secrets."v2ray/user_id".path}";
+      };
+    };
+  };
+
+  # V2Ray service configuration
   services.v2ray = {
     enable = lib.mkDefault false; # Disabled by default
 
@@ -38,21 +88,12 @@ in
           settings = {
             vnext = [
               {
-                # Use SOPS secrets if available, otherwise use example values
-                address =
-                  if config.sops.secrets ? "v2ray/server_address"
-                  then lib.strings.fileContents config.sops.secrets."v2ray/server_address".path
-                  else "2ppn.viapip.com";
-                port =
-                  if config.sops.secrets ? "v2ray/server_port"
-                  then lib.toInt (lib.strings.fileContents config.sops.secrets."v2ray/server_port".path)
-                  else 8080;
+                # SOPS secrets are required for V2Ray to work
+                address = lib.strings.fileContents config.sops.secrets."v2ray/server_address".path;
+                port = lib.toInt (lib.strings.fileContents config.sops.secrets."v2ray/server_port".path);
                 users = [
                   {
-                    id =
-                      if config.sops.secrets ? "v2ray/user_id"
-                      then lib.strings.fileContents config.sops.secrets."v2ray/user_id".path
-                      else "16bb4a8e-5ff5-429f-8df4-d0b8169caf2b";
+                    id = lib.strings.fileContents config.sops.secrets."v2ray/user_id".path;
                     encryption = "none";
                     flow = "";
                   }
@@ -66,14 +107,8 @@ in
             realitySettings = {
               serverName = "google.com";
               fingerprint = "firefox";
-              publicKey =
-                if config.sops.secrets ? "v2ray/public_key"
-                then lib.strings.fileContents config.sops.secrets."v2ray/public_key".path
-                else "S9JCk4TdwTxWkzzLd4gtBQjzdKzqK8w_1FUmvA2gPAs";
-              shortId =
-                if config.sops.secrets ? "v2ray/short_id"
-                then lib.strings.fileContents config.sops.secrets."v2ray/short_id".path
-                else "98502117";
+              publicKey = lib.strings.fileContents config.sops.secrets."v2ray/public_key".path;
+              shortId = lib.strings.fileContents config.sops.secrets."v2ray/short_id".path;
               spiderX = "/";
             };
           };
