@@ -1,7 +1,6 @@
 { config, pkgs, lib, ... }:
 
 let
-  # V2Ray configuration can be enabled/disabled
   cfg = config.services.v2ray;
 in
 
@@ -9,59 +8,11 @@ in
   # V2Ray service configuration with VLESS and SOPS integration
   # NOTE: Set services.v2ray.enable = true in your host config to enable
   
-  # SOPS secrets configuration when V2Ray is enabled
-  config = lib.mkIf (cfg.enable or false) {
-    # Define SOPS secrets with proper service integration
-    sops.secrets = {
-      "v2ray/server_address" = {
-        sopsFile = ../../secrets/v2ray.yaml;
-        mode = "0400";
-        owner = config.users.users.v2ray.name or "root";
-        restartUnits = [ "v2ray.service" ];
-      };
-      "v2ray/server_port" = {
-        sopsFile = ../../secrets/v2ray.yaml;
-        mode = "0400";
-        owner = config.users.users.v2ray.name or "root";
-        restartUnits = [ "v2ray.service" ];
-      };
-      "v2ray/user_id" = {
-        sopsFile = ../../secrets/v2ray.yaml;
-        mode = "0400";
-        owner = config.users.users.v2ray.name or "root";
-        restartUnits = [ "v2ray.service" ];
-      };
-      "v2ray/public_key" = {
-        sopsFile = ../../secrets/v2ray.yaml;
-        mode = "0400";
-        owner = config.users.users.v2ray.name or "root";
-        restartUnits = [ "v2ray.service" ];
-      };
-      "v2ray/short_id" = {
-        sopsFile = ../../secrets/v2ray.yaml;
-        mode = "0400";
-        owner = config.users.users.v2ray.name or "root";
-        restartUnits = [ "v2ray.service" ];
-      };
-    };
-
-    # Ensure V2Ray service waits for secrets to be available
-    systemd.services.v2ray = {
-      after = [ "sops-nix.service" ];
-      wants = [ "sops-nix.service" ];
-      
-      # Add assertions to ensure secrets exist
-      serviceConfig = {
-        ExecStartPre = "${pkgs.coreutils}/bin/test -f ${config.sops.secrets."v2ray/user_id".path}";
-      };
-    };
-  };
-
-  # V2Ray service configuration
+  # Service configuration
   services.v2ray = {
     enable = lib.mkDefault false; # Disabled by default
 
-    config = {
+    config = lib.mkIf cfg.enable {
       # Inbound configuration for local SOCKS/HTTP proxy
       inbounds = [
         {
@@ -208,23 +159,71 @@ in
       };
     };
   };
+  
+  # Additional configuration when V2Ray is enabled
+  config = lib.mkIf cfg.enable {
+    # Define SOPS secrets with proper service integration
+    sops.secrets = {
+      "v2ray/server_address" = {
+        sopsFile = ../../secrets/v2ray.yaml;
+        mode = "0400";
+        owner = config.users.users.v2ray.name or "root";
+        restartUnits = [ "v2ray.service" ];
+      };
+      "v2ray/server_port" = {
+        sopsFile = ../../secrets/v2ray.yaml;
+        mode = "0400";
+        owner = config.users.users.v2ray.name or "root";
+        restartUnits = [ "v2ray.service" ];
+      };
+      "v2ray/user_id" = {
+        sopsFile = ../../secrets/v2ray.yaml;
+        mode = "0400";
+        owner = config.users.users.v2ray.name or "root";
+        restartUnits = [ "v2ray.service" ];
+      };
+      "v2ray/public_key" = {
+        sopsFile = ../../secrets/v2ray.yaml;
+        mode = "0400";
+        owner = config.users.users.v2ray.name or "root";
+        restartUnits = [ "v2ray.service" ];
+      };
+      "v2ray/short_id" = {
+        sopsFile = ../../secrets/v2ray.yaml;
+        mode = "0400";
+        owner = config.users.users.v2ray.name or "root";
+        restartUnits = [ "v2ray.service" ];
+      };
+    };
 
-  # Open firewall ports for local proxy
-  networking.firewall = {
-    allowedTCPPorts = [ 1080 8118 ];
+    # Ensure V2Ray service waits for secrets to be available
+    systemd.services.v2ray = {
+      after = [ "sops-nix.service" ];
+      wants = [ "sops-nix.service" ];
+      
+      # Add assertions to ensure secrets exist
+      serviceConfig = {
+        ExecStartPre = "${pkgs.coreutils}/bin/test -f ${config.sops.secrets."v2ray/user_id".path}";
+      };
+    };
+
+    # Open firewall ports for local proxy
+    networking.firewall = {
+      allowedTCPPorts = [ 1080 8118 ];
+    };
+
+    # System proxy environment variables (optional)
+    # Uncomment to set system-wide proxy
+    # environment.sessionVariables = {
+    #   http_proxy = "http://127.0.0.1:8118";
+    #   https_proxy = "http://127.0.0.1:8118";
+    #   socks_proxy = "socks5://127.0.0.1:1080";
+    #   no_proxy = "localhost,127.0.0.0/8,::1";
+    # };
+
+    # Add v2ray package
+    environment.systemPackages = with pkgs; [
+      v2ray
+    ];
   };
-
-  # System proxy environment variables (optional)
-  # Uncomment to set system-wide proxy
-  # environment.sessionVariables = {
-  #   http_proxy = "http://127.0.0.1:8118";
-  #   https_proxy = "http://127.0.0.1:8118";
-  #   socks_proxy = "socks5://127.0.0.1:1080";
-  #   no_proxy = "localhost,127.0.0.0/8,::1";
-  # };
-
-  # Add v2ray package
-  environment.systemPackages = with pkgs; [
-    v2ray
-  ];
 }

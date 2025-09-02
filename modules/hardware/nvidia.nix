@@ -2,50 +2,45 @@
 
 with lib;
 
-let
-  # Check if NVIDIA GPU is present
-  hasNvidia = elem "nvidia" (config.services.xserver.videoDrivers or []);
-  
-  # Detect RTX 30/40 series (Ampere/Ada Lovelace) for open kernel modules
-  isModernNvidia = hasNvidia; # You can enhance detection here if needed
-in
 {
   options.hardware.nvidia = {
-    enable = mkEnableOption "NVIDIA GPU support" // {
-      default = hasNvidia;
-      description = "Enable NVIDIA GPU drivers and configuration";
+    enable = mkEnableOption "NVIDIA GPU support";
+    
+    useOpenKernel = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Use open-source kernel modules for RTX 20-series and newer";
     };
   };
 
-  config = mkIf (config.hardware.nvidia.enable or hasNvidia) {
+  config = mkIf config.hardware.nvidia.enable {
     # NVIDIA driver configuration
-    services.xserver.videoDrivers = mkDefault [ "nvidia" ];
+    services.xserver.videoDrivers = [ "nvidia" ];
 
     hardware = {
-    # Graphics configuration
-    graphics = {
-      enable = true;
-      enable32Bit = true; # Required for Steam and 32-bit games
+      # Graphics configuration
+      graphics = {
+        enable = true;
+        enable32Bit = true; # Required for Steam and 32-bit games
 
-      # Additional packages for graphics
-      extraPackages = with pkgs; [
-        nvidia-vaapi-driver
-        vaapiVdpau
-        libvdpau-va-gl
-      ];
+        # Additional packages for graphics
+        extraPackages = with pkgs; [
+          nvidia-vaapi-driver
+          vaapiVdpau
+          libvdpau-va-gl
+        ];
 
-      extraPackages32 = with pkgs.pkgsi686Linux; [
-        nvidia-vaapi-driver
-        vaapiVdpau
-        libvdpau-va-gl
-      ];
-    };
+        extraPackages32 = with pkgs.pkgsi686Linux; [
+          nvidia-vaapi-driver
+          vaapiVdpau
+          libvdpau-va-gl
+        ];
+      };
 
       # NVIDIA-specific settings
       nvidia = {
         # Use open kernel modules for RTX 20-series and newer
-        # Set to false for older GPUs or if you prefer proprietary
-        open = mkDefault (isModernNvidia && (lib.versionAtLeast config.boot.kernelPackages.kernel.version "6.0"));
+        open = mkDefault config.hardware.nvidia.useOpenKernel;
 
         # Enable kernel modesetting (required for Wayland)
         modesetting.enable = mkDefault true;
@@ -86,7 +81,7 @@ in
           # nvidiaBusId = "PCI:1:0:0";
         };
       };
-  };
+    };
 
     # Environment variables for NVIDIA
     environment.sessionVariables = mkMerge [
