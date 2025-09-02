@@ -7,7 +7,10 @@ This directory contains encrypted secrets managed by SOPS (Secrets OPerationS) w
 ### Initial Setup
 
 ```bash
-# Use the automated setup
+# Using Taskfile (recommended)
+task setup:sops
+
+# Or using legacy script
 ./nix.sh sops
 
 # Or manually:
@@ -23,8 +26,11 @@ ssh-to-age < /etc/ssh/ssh_host_ed25519_key.pub
 ### V2Ray Configuration
 
 ```bash
-# Configure V2Ray from VLESS URL
-./configure-v2ray.sh 'vless://UUID@server:port?pbk=...&sid=...'
+# Configure V2Ray from VLESS URL (using Taskfile)
+task v2ray:config URL='vless://UUID@server:port?pbk=...&sid=...'
+
+# Or edit V2Ray secrets directly
+task setup:sops:edit-v2ray
 
 # Or manually create from template
 cp secrets/v2ray.yaml.example secrets/v2ray.yaml
@@ -219,5 +225,6 @@ age -d -i ~/.config/sops/age/keys.txt secrets/v2ray.yaml
 
 4. Enable service and rebuild:
    ```bash
-   ./nix.sh rebuild
+   task rebuild
+   # Or: ./nix.sh rebuild
    ```

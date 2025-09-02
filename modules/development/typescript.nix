@@ -34,14 +34,14 @@
     deno
 
     # Database clients
-    nodePackages.prisma
-    mongosh
-    postgresql
-    redis
+    nodePackages.prisma # Keep ORM tool
+    # mongosh              # MongoDB shell - use remote connections
+    # postgresql           # Full PostgreSQL package - heavy
+    # redis                # Full Redis package - heavy
 
     # API development
-    insomnia
-    httpie
+    # insomnia             # Heavy Electron app - use curl/httpie
+    httpie # Lightweight CLI tool
   ];
 
   # Environment variables

@@ -1,0 +1,250 @@
+# Git operations for NixOS configuration
+version: '3'
+
+tasks:
+  check-dirty:
+    desc: "Check for uncommitted changes"
+    internal: true
+    silent: true
+    cmds:
+      - |
+        if [ -d .git ]; then
+          # Check for uncommitted changes
+          if ! git diff --quiet || ! git diff --cached --quiet; then
+            echo "Warning: You have uncommitted changes."
+            echo "Flakes only see committed/staged files."
+            echo ""
+            echo "Options:"
+            echo "1. Stage changes: task git:add-all"
+            echo "2. Commit changes: task git:commit"
+            echo "3. Continue anyway (changes won't be included in build)"
+            echo ""
+            read -p "Continue anyway? (y/N) " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+              exit 1
+            fi
+          fi
+        fi
+
+  init:
+    desc: "Initialize git repository"
+    cmds:
+      - |
+        if [ ! -d .git ]; then
+          echo "Initializing git repository..."
+          git init
+          git add .
+          git commit -m "Initial commit"
+          echo "Git repository initialized"
+        else
+          echo "Git repository already exists"
+        fi
+
+  status:
+    desc: "Show git status"
+    aliases: [gs]
+    cmds:
+      - git status
+
+  add-all:
+    desc: "Stage all changes"
+    aliases: [ga]
+    cmds:
+      - git add -A
+      - echo "All changes staged"
+      - git status --short
+
+  add-file:
+    desc: "Stage specific file"
+    internal: true
+    cmds:
+      - git add {{.FILE}}
+      - 'echo "Staged: {{.FILE}}"'
+    preconditions:
+      - sh: 'test -n "{{.FILE}}"'
+        msg: "FILE variable required"
+
+  commit:
+    desc: "Commit staged changes"
+    summary: |
+      Commit staged changes with a message.
+      Usage: task git:commit MSG="Your commit message"
+    aliases: [gc]
+    cmds:
+      - |
+        if [ -z "{{.MSG}}" ]; then
+          git commit
+        else
+          git commit -m "{{.MSG}}"
+        fi
+    vars:
+      MSG: '{{.MSG | default ""}}'
+
+  commit:quick:
+    desc: "Quick commit with automatic message"
+    cmds:
+      - git add -A
+      - git commit -m "Update configuration $(date +%Y-%m-%d)"
+
+  commit:rebuild:
+    desc: "Commit for rebuild"
+    summary: |
+      Stage and commit all changes for a rebuild.
+      This ensures all changes are visible to the flake.
+    cmds:
+      - git add -A
+      - |
+        # Generate commit message based on changes
+        if git diff --cached --name-only | grep -q "\.nix$"; then
+          MSG="feat: Update NixOS configuration"
+        elif git diff --cached --name-only | grep -q "flake.lock"; then
+          MSG="chore: Update flake inputs"
+        else
+          MSG="chore: Update configuration files"
+        fi
+        
+        # Add details about changed files
+        CHANGED=$(git diff --cached --name-only | head -5 | xargs)
+        if [ -n "$CHANGED" ]; then
+          MSG="$MSG\n\nModified: $CHANGED"
+        fi
+        
+        echo -e "$MSG" | git commit -F -
+        echo "Changes committed and ready for rebuild"
+
+  diff:
+    desc: "Show uncommitted changes"
+    aliases: [gd]
+    cmds:
+      - git diff
+
+  diff:staged:
+    desc: "Show staged changes"
+    cmds:
+      - git diff --cached
+
+  log:
+    desc: "Show commit history"
+    aliases: [gl]
+    cmds:
+      - git log --oneline --graph --decorate -20
+
+  log:detailed:
+    desc: "Show detailed commit history"
+    cmds:
+      - git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit -20
+
+  push:
+    desc: "Push to remote repository"
+    aliases: [gp]
+    cmds:
+      - git push
+
+  pull:
+    desc: "Pull from remote repository"
+    cmds:
+      - git pull --rebase
+
+  branch:
+    desc: "Show current branch"
+    cmds:
+      - git branch --show-current
+
+  branches:
+    desc: "List all branches"
+    cmds:
+      - git branch -a
+
+  checkout:
+    desc: "Checkout branch"
+    summary: |
+      Checkout a git branch.
+      Usage: task git:checkout BRANCH=main
+    cmds:
+      - git checkout {{.BRANCH}}
+    preconditions:
+      - sh: test -n "{{.BRANCH}}"
+        msg: "Please specify BRANCH variable"
+
+  stash:
+    desc: "Stash current changes"
+    cmds:
+      - git stash push -m "Stashed by task at $(date)"
+      - echo "Changes stashed"
+
+  stash:pop:
+    desc: "Apply and remove latest stash"
+    cmds:
+      - git stash pop
+      - echo "Stash applied"
+
+  stash:list:
+    desc: "List all stashes"
+    cmds:
+      - git stash list
+
+  remote:add:
+    desc: "Add remote repository"
+    summary: |
+      Add a git remote repository.
+      Usage: task git:remote:add NAME=origin URL=https://github.com/user/repo.git
+    cmds:
+      - git remote add {{.NAME}} {{.URL}}
+      - echo "Remote '{{.NAME}}' added"
+      - git remote -v
+    preconditions:
+      - sh: test -n "{{.NAME}}"
+        msg: "Please specify NAME variable"
+      - sh: test -n "{{.URL}}"
+        msg: "Please specify URL variable"
+
+  remote:list:
+    desc: "List remote repositories"
+    cmds:
+      - git remote -v
+
+  tag:
+    desc: "Create a git tag"
+    summary: |
+      Create a git tag for the current commit.
+      Usage: task git:tag TAG=v1.0.0
+    cmds:
+      - git tag {{.TAG}}
+      - echo "Tag '{{.TAG}}' created"
+      - git tag -l
+    preconditions:
+      - sh: test -n "{{.TAG}}"
+        msg: "Please specify TAG variable"
+
+  tag:push:
+    desc: "Push tags to remote"
+    cmds:
+      - git push --tags
+      - echo "Tags pushed to remote"
+
+  clean:
+    desc: "Clean untracked files (dry run)"
+    cmds:
+      - echo "Files that would be removed:"
+      - git clean -n -d
+
+  clean:force:
+    desc: "Clean untracked files (force)"
+    prompt: This will permanently delete untracked files. Continue?
+    cmds:
+      - git clean -f -d
+      - echo "Untracked files removed"
+
+  reset:soft:
+    desc: "Soft reset to previous commit"
+    cmds:
+      - git reset --soft HEAD~1
+      - echo "Soft reset complete (changes kept in staging)"
+
+  reset:hard:
+    desc: "Hard reset to previous commit"
+    prompt: This will permanently lose uncommitted changes. Continue?
+    cmds:
+      - git reset --hard HEAD~1
+      - echo "Hard reset complete (changes lost)"

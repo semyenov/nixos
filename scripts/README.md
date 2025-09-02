@@ -2,13 +2,21 @@
 
 This directory contains helper scripts and libraries for managing the NixOS configuration.
 
+> **Note**: These are legacy libraries used by the shell scripts. The project is migrating to [Taskfile](../Taskfile.yml) for task automation. New functionality should be added as tasks rather than shell scripts.
+
 ## Structure
 
 ```
 scripts/
 ├── README.md       # This file
-└── lib/
-    └── common.sh   # Shared bash library
+└── lib/            # Shell script libraries (legacy)
+    ├── common.sh   # Shared bash library
+    ├── dry-run.sh  # Dry-run functionality
+    ├── errors.sh   # Error handling
+    ├── git.sh      # Git operations
+    ├── help.sh     # Help text generation
+    ├── options.sh  # Option parsing
+    └── tests.sh    # Test functions
 ```
 
 ## Common Library (`lib/common.sh`)

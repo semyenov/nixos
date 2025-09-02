@@ -51,15 +51,15 @@ in
       paths = cfg.paths;
       exclude = cfg.exclude;
       repo = cfg.repository;
-      
+
       # Simple encryption
       encryption = {
         mode = "none";
       };
-      
+
       compression = "auto,zstd";
       startAt = cfg.schedule;
-      
+
       # Simple retention policy
       prune.keep = {
         daily = 7;
@@ -69,7 +69,7 @@ in
     };
 
     # Install backup tools
-    environment.systemPackages = with pkgs; [ 
+    environment.systemPackages = with pkgs; [
       borgbackup
     ];
 

@@ -1,4 +1,4 @@
-{ pkgs ? import <nixpkgs> {} }:
+{ pkgs ? import <nixpkgs> { } }:
 
 {
   # TypeScript/JavaScript development shell
@@ -15,7 +15,7 @@
       bun
       deno
     ];
-    
+
     shellHook = ''
       echo "TypeScript Development Environment"
       echo "Node: $(node --version)"
@@ -44,7 +44,7 @@
       ruff
       pyright
     ];
-    
+
     shellHook = ''
       echo "Python Development Environment"
       echo "Python: $(python --version)"
@@ -76,7 +76,7 @@
       cargo-expand
       sccache
     ];
-    
+
     shellHook = ''
       echo "Rust Development Environment"
       echo "Rust: $(rustc --version)"
@@ -100,7 +100,7 @@
       impl
       gocode-gomod
     ];
-    
+
     shellHook = ''
       echo "Go Development Environment"
       echo "Go: $(go version)"
@@ -128,7 +128,7 @@
       boost
       catch2
     ];
-    
+
     shellHook = ''
       echo "C/C++ Development Environment"
       echo "GCC: $(gcc --version | head -n1)"
@@ -146,7 +146,7 @@
       google-cloud-sdk
       azure-cli
       doctl
-      
+
       # Kubernetes
       kubectl
       kubernetes-helm
@@ -155,32 +155,32 @@
       minikube
       kustomize
       kubeseal
-      
+
       # Infrastructure as Code
       terraform
       terragrunt
       packer
       ansible
       pulumi
-      
+
       # CI/CD
       github-cli
       gitlab
       jenkins
-      
+
       # Container tools
       docker-compose
       podman
       buildah
       skopeo
       dive
-      
+
       # Monitoring
       prometheus
       grafana
       telegraf
     ];
-    
+
     shellHook = ''
       echo "DevOps Environment"
       echo "Terraform: $(terraform version | head -n1)"
@@ -198,24 +198,24 @@
       redis
       mongodb
       sqlite
-      
+
       # Clients
       pgcli
       mycli
       litecli
       mongosh
       redis
-      
+
       # Migration tools
       flyway
       liquibase
       dbmate
-      
+
       # GUI tools
       dbeaver-bin
       pgadmin4
     ];
-    
+
     shellHook = ''
       echo "Database Development Environment"
       echo "PostgreSQL: $(psql --version)"
@@ -247,18 +247,18 @@
         xgboost
         lightgbm
       ]))
-      
+
       # R environment
       R
       rstudio
-      
+
       # Julia
       julia
-      
+
       # Tools
       quarto
     ];
-    
+
     shellHook = ''
       echo "Data Science Environment"
       echo "Python with ML/DS packages loaded"
@@ -277,19 +277,19 @@
       # nodePackages.react-native-cli # Deprecated, use npx react-native instead
       # nodePackages.expo-cli # Use npx expo instead
       watchman
-      
+
       # Flutter
       flutter
-      
+
       # Android
       # android-studio # Large package, install separately if needed
       android-tools
-      
+
       # Tools
       scrcpy
       # cocoapods # macOS specific
     ];
-    
+
     shellHook = ''
       echo "Mobile Development Environment"
       echo "React Native CLI available"
@@ -311,7 +311,7 @@
       socat
       tcpdump
       wireshark
-      
+
       # Web security
       burpsuite
       zap
@@ -320,28 +320,28 @@
       gobuster
       ffuf
       wfuzz
-      
+
       # Vulnerability scanners
       metasploit
       nuclei
       trivy
       grype
-      
+
       # Password tools
       hashcat
       john
       hydra
-      
+
       # Forensics
       binwalk
       foremost
       volatility3
-      
+
       # Crypto
       openssl
       gnupg
     ];
-    
+
     shellHook = ''
       echo "Security Testing Environment"
       echo "⚠️  Use responsibly and only on systems you own or have permission to test"

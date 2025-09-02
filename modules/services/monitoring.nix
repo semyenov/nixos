@@ -3,14 +3,14 @@
 {
   options.services.monitoring = {
     enable = lib.mkEnableOption "system monitoring and alerting";
-    
+
     prometheus = {
       enable = lib.mkOption {
         type = lib.types.bool;
         default = false;
         description = "Enable Prometheus monitoring";
       };
-      
+
       port = lib.mkOption {
         type = lib.types.port;
         default = 9090;
@@ -24,7 +24,7 @@
         default = false;
         description = "Enable Grafana dashboards";
       };
-      
+
       port = lib.mkOption {
         type = lib.types.port;
         default = 3000;
@@ -38,7 +38,7 @@
         default = true;
         description = "Enable system alerts";
       };
-      
+
       email = lib.mkOption {
         type = lib.types.nullOr lib.types.str;
         default = null;
@@ -60,32 +60,32 @@
       dstat
       sysstat
       lm_sensors
-      
+
       # Resource monitoring
       ncdu # Disk usage analyzer
-      duf  # Better df
+      duf # Better df
       dust # Directory disk usage
-      
+
       # Network monitoring
       vnstat
       bmon
       nload
       speedtest-cli
-      
+
       # Process monitoring
       procps
       psmisc
       lsof
-      
+
       # Log monitoring
       lnav
       multitail
-      
+
       # Hardware monitoring
       smartmontools
       nvtopPackages.nvidia
       intel-gpu-tools
-      
+
       # Performance analysis
       perf-tools
       sysdig
@@ -96,7 +96,7 @@
     services.prometheus = lib.mkIf config.services.monitoring.prometheus.enable {
       enable = true;
       port = config.services.monitoring.prometheus.port;
-      
+
       exporters = {
         node = {
           enable = true;
@@ -115,12 +115,12 @@
             "logind"
           ];
         };
-        
+
         systemd.enable = true;
         nginx.enable = config.services.nginx.enable;
         postgres.enable = config.services.postgresql.enable;
       };
-      
+
       scrapeConfigs = [
         {
           job_name = "node";
@@ -129,7 +129,7 @@
           }];
         }
       ];
-      
+
       rules = lib.mkIf config.services.monitoring.alerts.enable [
         ''
           groups:
@@ -182,18 +182,18 @@
           http_port = config.services.monitoring.grafana.port;
           domain = "localhost";
         };
-        
+
         analytics.reporting_enabled = false;
-        
+
         "auth.anonymous" = {
           enabled = true;
           org_role = "Viewer";
         };
       };
-      
+
       provision = {
         enable = true;
-        
+
         datasources.settings.datasources = lib.mkIf config.services.monitoring.prometheus.enable [
           {
             name = "Prometheus";
@@ -202,7 +202,7 @@
             isDefault = true;
           }
         ];
-        
+
         dashboards.settings.providers = [
           {
             name = "Default";
@@ -227,10 +227,10 @@
           };
         };
       };
-      
+
       # Network statistics
       vnstat.enable = true;
-      
+
       # System activity collection
       sysstat.enable = true;
     };
@@ -240,7 +240,7 @@
       description = "System monitoring alerts";
       after = [ "network.target" ];
       wantedBy = [ "multi-user.target" ];
-      
+
       script = ''
         # Check CPU usage
         CPU_USAGE=$(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1)
@@ -260,7 +260,7 @@
           ${pkgs.libnotify}/bin/notify-send "Low Disk Space" "Root partition is $DISK_USAGE% full"
         fi
       '';
-      
+
       serviceConfig = {
         Type = "oneshot";
         User = "root";

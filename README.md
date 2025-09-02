@@ -21,6 +21,7 @@ A modular NixOS system configuration using Flakes, Home Manager, and SOPS for se
 - NixOS installed (or installing)
 - Git installed
 - Basic understanding of Nix
+- [go-task](https://taskfile.dev) (optional, can use legacy scripts)
 
 ### Installation
 
@@ -30,24 +31,60 @@ A modular NixOS system configuration using Flakes, Home Manager, and SOPS for se
    cd nixos-config
    ```
 
-2. **Run automated setup**:
+2. **Install task runner** (recommended):
    ```bash
+   nix-shell -p go-task
+   # Or add to your system: add 'go-task' to environment.systemPackages
+   ```
+
+3. **Run automated setup**:
+   ```bash
+   # Using Taskfile (recommended)
+   task setup:init
+   
+   # Or using legacy script
    ./nix.sh setup
    ```
 
-   Or for quick setup (auto-yes):
+4. **Rebuild system**:
    ```bash
-   ./nix.sh setup -q
-   ```
-
-3. **Rebuild system**:
-   ```bash
+   # Using Taskfile
+   task rebuild
+   
+   # Or using legacy script
    ./nix.sh rebuild
    ```
 
 ## Usage
 
 ### Daily Operations
+
+#### Using Taskfile (Recommended)
+
+```bash
+# Show all available tasks
+task --list-all
+
+# Rebuild system
+task rebuild          # or just 'task r'
+
+# Test configuration
+task test            # or 'task t'
+
+# Update flake inputs
+task update          # or 'task u'
+
+# Clean old generations
+task clean           # or 'task c'
+
+# Rollback to previous
+task rollback
+
+# Show system info
+task info
+```
+
+#### Using Legacy Script
 
 ```bash
 # Rebuild system (default command)
@@ -89,14 +126,23 @@ nix flake show
 
 ```bash
 # Configure from VLESS URL
-./configure-v2ray.sh 'vless://...'
+task v2ray:config URL='vless://...'
+
+# Check service status
+task v2ray:status
+
+# Test proxy connection
+task v2ray:test
+
+# View logs
+task v2ray:logs
 
 # Enable in configuration
 # Edit hosts/nixos/configuration.nix:
-# services.v2ray.enable = true;
+# services.v2rayWithSecrets.enable = true;
 
 # Rebuild
-./nix.sh rebuild
+task rebuild
 ```
 
 ## Project Structure
@@ -104,12 +150,17 @@ nix flake show
 ```
 .
 ├── flake.nix              # Flake configuration
+├── Taskfile.yml           # Task automation (go-task)
+├── tasks/                 # Modular task files
+│   ├── setup.yml         # Setup tasks
+│   ├── v2ray.yml         # V2Ray management
+│   └── git.yml           # Git operations
 ├── hosts/
 │   └── nixos/            # Host-specific configuration
 ├── modules/              # Modular NixOS configuration
 │   ├── core/            # Boot, kernel, Nix settings
 │   ├── desktop/         # Desktop environment
-│   ├── development/     # Development tools
+│   ├── development/     # Development tools (includes go-task)
 │   ├── hardware/        # Hardware configuration
 │   ├── security/        # Security settings
 │   ├── services/        # System services
@@ -117,9 +168,10 @@ nix flake show
 ├── users/
 │   └── semyenov/        # User home configuration
 ├── secrets/             # SOPS-encrypted secrets
+├── scripts/
+│   └── lib/             # Shell script libraries
 ├── shells.nix           # Development shells
-├── nix.sh              # Management script
-└── configure-v2ray.sh   # V2Ray setup helper
+└── nix.sh              # Legacy management script
 ```
 
 ## Configuration
@@ -166,9 +218,12 @@ Secrets are managed with SOPS and age encryption:
 
 ```bash
 # Setup SOPS
-./nix.sh sops
+task setup:sops
 
-# Edit secrets
+# Edit V2Ray secrets
+task setup:sops:edit-v2ray
+
+# Edit secrets directly
 sops secrets/v2ray.yaml
 
 # Create new secrets
@@ -183,23 +238,28 @@ See [secrets/README.md](secrets/README.md) for detailed information.
 
 1. **Hardware configuration missing**:
    ```bash
+   task setup:hardware
+   # Or manually:
    sudo nixos-generate-config --dir hosts/nixos/
    ```
 
-2. **Flake not updating**:
+2. **Flake not updating** (uncommitted changes):
    ```bash
-   git add .
-   ./nix.sh rebuild
+   task git:add-all       # Stage all changes
+   task git:commit:rebuild  # Auto-commit for rebuild
+   task rebuild
    ```
 
 3. **SOPS decryption fails**:
    ```bash
-   ./nix.sh sops
+   task setup:sops
    ```
 
 4. **Disk space issues**:
    ```bash
-   ./nix.sh clean
+   task clean
+   # Or keep some generations:
+   task clean:keep KEEP=5
    ```
 
 ### Debug Commands
@@ -211,19 +271,32 @@ journalctl -xe
 # Service status
 systemctl status service-name
 
-# Build with trace
-./nix.sh rebuild -v
+# Build with detailed trace
+task rebuild:trace
 
 # Test configuration
-./nix.sh test
+task test
+
+# Validate flake
+task test:flake
+
+# Check formatting
+task test:format
+
+# System information
+task info
+task info:generation
+task info:kernel
 ```
 
 ## Documentation
 
 - [CLAUDE.md](CLAUDE.md) - Detailed documentation for Claude AI
 - [secrets/README.md](secrets/README.md) - Secrets management guide
-- `./nix.sh help` - Command help
-- `./nix.sh [command] --help` - Command-specific help
+- `task --list-all` - List all available tasks
+- `task --summary <task-name>` - Show task details
+- `task help` - General help
+- `./nix.sh help` - Legacy script help
 
 ## Contributing
 

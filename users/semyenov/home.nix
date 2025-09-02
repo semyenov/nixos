@@ -4,70 +4,70 @@
   # Home Manager configuration for semyenov
   home = {
     username = "semyenov";
-    homeDirectory = "/home/semyenov";
+    # homeDirectory is automatically set by NixOS
 
     # This value determines the Home Manager release
     stateVersion = "25.05";
 
     # Packages to install for this user
     packages = with pkgs; [
-      # Communication
-      thunderbird
-      telegram-desktop
+      # Communication (keep essentials)
+      # thunderbird  # ~500 MB - use web email
+      telegram-desktop # Keep for messaging
       # discord  # Temporarily disabled due to download issues
-      slack
-      zoom-us
+      # slack        # ~500 MB - use web version
+      # zoom-us      # ~500 MB - use web version
 
-      # Browsers
-      brave
-      google-chrome
+      # Browsers (keep only one primary)
+      brave # Primary browser
+      # google-chrome  # ~1 GB - duplicate Chromium browser
 
       # Security
-      gopass
+      gopass # Lightweight CLI tool
       gopass-jsonapi
       bitwarden
-      keepassxc
+      keepassxc # Lightweight, good to have backup
 
-      # Gaming
-      lutris
-      steam
-      mangohud
-      gamemode
+      # Gaming (commented to save space)
+      # lutris  # ~500 MB + Wine dependencies
+      # steam   # ~2-3 GB + runtime dependencies
+      # mangohud
+      # gamemode
 
-      # Development
-      code-cursor
-      claude-code
-      vscode
-      jetbrains.idea-community
-      postman
-      dbeaver-bin
+      # Development (keep only essential editors)
+      code-cursor # Keep cursor for development
+      claude-code # Keep claude-code for AI assistance
+      # vscode       # ~1.5 GB - duplicate editor
+      # jetbrains.idea-community  # ~2-3 GB - very heavy
+      # postman      # Can use curl/httpie instead
+      # dbeaver-bin  # ~500 MB - use CLI tools instead
 
       # Terminal emulators
       ghostty
-      kitty
-      warp-terminal
+      kitty # Lightweight, keep both
+      # warp-terminal  # Heavy Electron-based terminal
 
       # Media
-      vlc
-      mpv
+      vlc # Keep both media players
+      mpv # Lightweight media player
       spotify
-      obs-studio
-      kdePackages.kdenlive # Qt 6 version
-      gimp
-      inkscape
+      # obs-studio   # ~500 MB - streaming software
+      # kdePackages.kdenlive  # ~1-2 GB with Qt6/KDE libs
+      # gimp         # ~500 MB - heavy image editor
+      # inkscape     # ~500 MB - heavy vector editor
 
-      # Office
-      libreoffice
-      obsidian
-      logseq
-      zotero
+      # Office (minimize heavy packages)
+      # libreoffice  # ~1.5 GB - use web office or lighter editors
+      obsidian # Keep for notes
+      # logseq       # Duplicate note-taking app
+      # zotero       # Academic reference manager
 
       # Utilities
-      flameshot
-      peek
+      flameshot # Lightweight screenshot tool
+      peek # Lightweight GIF recorder
       kooha # Screen recorder
-      wl-clipboard
-      xclip
+      wl-clipboard # Lightweight clipboard utils
+      xclip # Lightweight clipboard utils
     ];
 
     # Session variables with proper PATH handling
@@ -79,17 +79,17 @@
       # Development
       PNPM_HOME = "$HOME/.local/share/pnpm";
       NPM_CONFIG_PREFIX = "$HOME/.npm-global";
-      
+
       # Wayland support for Electron apps
       NIXOS_OZONE_WL = "1";
       ELECTRON_OZONE_PLATFORM_HINT = "auto";
-      
+
       # Additional development variables
       CARGO_HOME = "$HOME/.cargo";
       RUSTUP_HOME = "$HOME/.rustup";
       GOPATH = "$HOME/go";
     };
-    
+
     # Properly manage PATH
     sessionPath = [
       "$HOME/.local/bin"
@@ -425,13 +425,13 @@
       maxCacheTtl = 172800;
       pinentry.package = pkgs.pinentry-gnome3;
     };
-    
+
     # Syncthing
     syncthing = {
       enable = false; # Enable if needed
     };
   };
-  
+
   # XDG configuration
   xdg = {
     enable = true;
@@ -447,7 +447,7 @@
       templates = "$HOME/Templates";
       videos = "$HOME/Videos";
     };
-    
+
     mimeApps = {
       enable = true;
       defaultApplications = {

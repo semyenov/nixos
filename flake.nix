@@ -82,28 +82,37 @@
       };
 
       # Development shells
-      devShells.${system} = let
-        shells = import ./shells.nix { inherit pkgs; };
-      in shells // {
-        default = pkgs.mkShell {
-          buildInputs = with pkgs; [
-            nixpkgs-fmt
-            nil
-            statix
-            deadnix
-            sops
-            age
-            ssh-to-age
-          ];
+      devShells.${system} =
+        let
+          shells = import ./shells.nix { inherit pkgs; };
+        in
+        shells // {
+          default = pkgs.mkShell {
+            buildInputs = with pkgs; [
+              nixpkgs-fmt
+              nil
+              statix
+              deadnix
+              sops
+              age
+              ssh-to-age
+            ];
 
-          shellHook = ''
-            echo "NixOS development environment"
-            echo "Commands:"
-            echo "  nixos-rebuild switch --flake .#nixos"
-            echo "  nix flake update"
-            echo "  nixpkgs-fmt ."
-          '';
+            shellHook = ''
+              echo "NixOS development environment"
+              echo "Commands:"
+              echo "  nixos-rebuild switch --flake .#nixos"
+              echo "  nix flake update"
+              echo "  nixpkgs-fmt ."
+            '';
+          };
         };
-      };
+
+      formatter = nixpkgs.lib.genAttrs [ "x86_64-linux" "aarch64-darwin" ] (system:
+        (import nixpkgs {
+          inherit system;
+          config = { allowUnfree = true; };
+        }).nixpkgs-fmt
+      );
     };
 }

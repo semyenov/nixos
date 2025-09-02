@@ -3,7 +3,7 @@
 {
   options.hardware.autoDetect = {
     enable = lib.mkEnableOption "automatic hardware detection and configuration";
-    
+
     cpu = {
       enable = lib.mkOption {
         type = lib.types.bool;
@@ -11,7 +11,7 @@
         description = "Enable CPU-specific optimizations";
       };
     };
-    
+
     gpu = {
       enable = lib.mkOption {
         type = lib.types.bool;
@@ -19,7 +19,7 @@
         description = "Enable GPU auto-detection";
       };
     };
-    
+
     storage = {
       enable = lib.mkOption {
         type = lib.types.bool;
@@ -27,7 +27,7 @@
         description = "Enable storage optimizations";
       };
     };
-    
+
     network = {
       enable = lib.mkOption {
         type = lib.types.bool;
@@ -59,7 +59,7 @@
             "intel_rapl"
             "intel_powerclamp"
           ])
-          
+
           # AMD CPU modules  
           (lib.mkIf (builtins.elem "AuthenticAMD" (lib.strings.splitString " " (builtins.readFile (if builtins.pathExists /proc/cpuinfo then /proc/cpuinfo else "/dev/null")))) [
             "kvm-amd"
@@ -68,7 +68,7 @@
             "amd_energy"
           ])
         ]))
-        
+
         # Peripheral modules
         (lib.mkIf config.hardware.autoDetect.peripherals.enable [
           "usbhid"
@@ -80,7 +80,7 @@
           "btrtl"
         ])
       ];
-      
+
       # CPU microcode updates
       initrd.prepend = lib.mkIf config.hardware.autoDetect.cpu.enable (lib.mkMerge [
         (lib.mkIf (builtins.elem "GenuineIntel" (lib.strings.splitString " " (builtins.readFile (if builtins.pathExists /proc/cpuinfo then /proc/cpuinfo else "/dev/null"))))
@@ -88,7 +88,7 @@
         (lib.mkIf (builtins.elem "AuthenticAMD" (lib.strings.splitString " " (builtins.readFile (if builtins.pathExists /proc/cpuinfo then /proc/cpuinfo else "/dev/null"))))
           [ "${pkgs.microcodeAmd}/amd-ucode.img" ])
       ]);
-      
+
       # Kernel sysctl settings
       kernel.sysctl = lib.mkMerge [
         # Storage optimizations
@@ -96,7 +96,7 @@
           "vm.swappiness" = 10;
           "vm.vfs_cache_pressure" = 50;
         })
-        
+
         # Network optimizations
         (lib.mkIf config.hardware.autoDetect.network.enable {
           "net.core.netdev_max_backlog" = 5000;
@@ -115,15 +115,15 @@
     # Hardware packages based on detected hardware
     hardware = {
       # CPU frequency scaling
-      cpu.intel.updateMicrocode = lib.mkIf config.hardware.autoDetect.cpu.enable 
+      cpu.intel.updateMicrocode = lib.mkIf config.hardware.autoDetect.cpu.enable
         (builtins.elem "GenuineIntel" (lib.strings.splitString " " (builtins.readFile (if builtins.pathExists /proc/cpuinfo then /proc/cpuinfo else "/dev/null"))));
       cpu.amd.updateMicrocode = lib.mkIf config.hardware.autoDetect.cpu.enable
         (builtins.elem "AuthenticAMD" (lib.strings.splitString " " (builtins.readFile (if builtins.pathExists /proc/cpuinfo then /proc/cpuinfo else "/dev/null"))));
-      
+
       # Enable firmware updates
       enableAllFirmware = true;
       enableRedistributableFirmware = true;
-      
+
       # Bluetooth support
       bluetooth = lib.mkIf config.hardware.autoDetect.peripherals.enable {
         enable = true;
@@ -157,12 +157,12 @@
           };
         };
       })
-      
+
       # AMD-specific services
       (lib.mkIf (config.hardware.autoDetect.cpu.enable && builtins.elem "AuthenticAMD" (lib.strings.splitString " " (builtins.readFile (if builtins.pathExists /proc/cpuinfo then /proc/cpuinfo else "/dev/null")))) {
         power-profiles-daemon.enable = true;
       })
-      
+
       # Printing support
       (lib.mkIf config.hardware.autoDetect.peripherals.enable {
         printing = {
@@ -176,18 +176,18 @@
             cnijfilter2
           ];
         };
-        
+
         # Scanner support
         # Note: hardware.sane configuration would go here if needed
       })
-      
+
       # USB device management
       (lib.mkIf config.hardware.autoDetect.peripherals.enable {
         udisks2.enable = true;
         devmon.enable = true;
         gvfs.enable = true;
       })
-      
+
       # Udev configuration
       {
         udev = {
@@ -195,41 +195,41 @@
             usb-modeswitch
             android-udev-rules
           ]);
-          
+
           extraRules = lib.mkMerge [
-        # Storage optimization rules
-        (lib.mkIf config.hardware.autoDetect.storage.enable ''
-          # NVMe optimal settings
-          ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/scheduler}="none"
-          ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/add_random}="0"
-          ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/rq_affinity}="2"
+            # Storage optimization rules
+            (lib.mkIf config.hardware.autoDetect.storage.enable ''
+              # NVMe optimal settings
+              ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/scheduler}="none"
+              ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/add_random}="0"
+              ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/rq_affinity}="2"
           
-          # SSD optimal settings
-          ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="mq-deadline"
-          ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="0", ATTR{queue/add_random}="0"
-          ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="0", ATTR{queue/rq_affinity}="2"
+              # SSD optimal settings
+              ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="mq-deadline"
+              ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="0", ATTR{queue/add_random}="0"
+              ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="0", ATTR{queue/rq_affinity}="2"
           
-          # HDD optimal settings
-          ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="1", ATTR{queue/scheduler}="bfq"
-          ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="1", ATTR{queue/add_random}="1"
-        '')
-        
-        # Network optimization rules
-        (lib.mkIf config.hardware.autoDetect.network.enable ''
-          # Increase network device ring buffer
-          ACTION=="add", SUBSYSTEM=="net", KERNEL=="eth*", RUN+="${pkgs.ethtool}/bin/ethtool -G $name rx 4096 tx 4096"
-          ACTION=="add", SUBSYSTEM=="net", KERNEL=="wlan*", RUN+="${pkgs.iw}/bin/iw dev $name set power_save off"
-        '')
-        
-        # USB autosuspend for better power management
-        (lib.mkIf config.hardware.autoDetect.peripherals.enable ''
-          # Disable USB autosuspend for input devices
-          ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="*", ATTR{idProduct}=="*", TEST=="authorized", ATTR{authorized}="1"
-          ACTION=="add", SUBSYSTEM=="usb", DRIVER=="usbhid", TEST=="power/control", ATTR{power/control}="on"
+              # HDD optimal settings
+              ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="1", ATTR{queue/scheduler}="bfq"
+              ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="1", ATTR{queue/add_random}="1"
+            '')
+
+            # Network optimization rules
+            (lib.mkIf config.hardware.autoDetect.network.enable ''
+              # Increase network device ring buffer
+              ACTION=="add", SUBSYSTEM=="net", KERNEL=="eth*", RUN+="${pkgs.ethtool}/bin/ethtool -G $name rx 4096 tx 4096"
+              ACTION=="add", SUBSYSTEM=="net", KERNEL=="wlan*", RUN+="${pkgs.iw}/bin/iw dev $name set power_save off"
+            '')
+
+            # USB autosuspend for better power management
+            (lib.mkIf config.hardware.autoDetect.peripherals.enable ''
+              # Disable USB autosuspend for input devices
+              ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="*", ATTR{idProduct}=="*", TEST=="authorized", ATTR{authorized}="1"
+              ACTION=="add", SUBSYSTEM=="usb", DRIVER=="usbhid", TEST=="power/control", ATTR{power/control}="on"
           
-          # Enable autosuspend for other USB devices
-          ACTION=="add", SUBSYSTEM=="usb", TEST=="power/control", ATTR{power/control}="auto"
-        '')
+              # Enable autosuspend for other USB devices
+              ACTION=="add", SUBSYSTEM=="usb", TEST=="power/control", ATTR{power/control}="auto"
+            '')
           ];
         };
       }
@@ -239,14 +239,14 @@
     # Hardware tools
     environment.systemPackages = with pkgs; lib.mkMerge [
       # Basic hardware tools
-      [ 
+      [
         pciutils
         usbutils
         lshw
         hwinfo
         dmidecode
       ]
-      
+
       # CPU tools
       (lib.mkIf config.hardware.autoDetect.cpu.enable [
         cpufrequtils
@@ -256,7 +256,7 @@
         s-tui
         stress
       ])
-      
+
       # Storage tools
       (lib.mkIf config.hardware.autoDetect.storage.enable [
         hdparm
@@ -266,7 +266,7 @@
         gptfdisk
         parted
       ])
-      
+
       # Network tools
       (lib.mkIf config.hardware.autoDetect.network.enable [
         ethtool
@@ -274,7 +274,7 @@
         wavemon
         wireless-tools
       ])
-      
+
       # Peripheral tools
       (lib.mkIf config.hardware.autoDetect.peripherals.enable [
         bluez

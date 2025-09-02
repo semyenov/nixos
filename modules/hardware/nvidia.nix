@@ -5,7 +5,7 @@ with lib;
 {
   options.hardware.nvidia = {
     enable = mkEnableOption "NVIDIA GPU support";
-    
+
     useOpenKernel = mkOption {
       type = types.bool;
       default = true;
@@ -90,11 +90,11 @@ with lib;
         LIBVA_DRIVER_NAME = "nvidia";
         GBM_BACKEND = "nvidia-drm";
         __GLX_VENDOR_LIBRARY_NAME = "nvidia";
-        
+
         # CUDA cache
         CUDA_CACHE_PATH = "$HOME/.cache/cuda";
       }
-      
+
       # Wayland-specific variables
       (mkIf config.services.xserver.displayManager.gdm.wayland {
         WLR_NO_HARDWARE_CURSORS = "1";
@@ -103,7 +103,7 @@ with lib;
         # Fix for electron apps
         ELECTRON_OZONE_PLATFORM_HINT = "auto";
       })
-      
+
       # VDPAU support
       (mkIf config.hardware.graphics.enable {
         VDPAU_DRIVER = "nvidia";
@@ -129,13 +129,13 @@ with lib;
     # Assertions for common issues
     assertions = [
       {
-        assertion = !config.hardware.nvidia.open || 
-                   (lib.versionAtLeast config.boot.kernelPackages.kernel.version "6.0");
+        assertion = !config.hardware.nvidia.open ||
+          (lib.versionAtLeast config.boot.kernelPackages.kernel.version "6.0");
         message = "Open NVIDIA kernel modules require kernel 6.0 or newer";
       }
       {
-        assertion = !config.hardware.nvidia.prime.offload.enable || 
-                   (!config.hardware.nvidia.prime.sync.enable);
+        assertion = !config.hardware.nvidia.prime.offload.enable ||
+          (!config.hardware.nvidia.prime.sync.enable);
         message = "NVIDIA PRIME offload and sync modes are mutually exclusive";
       }
     ];

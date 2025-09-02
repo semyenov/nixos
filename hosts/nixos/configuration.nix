@@ -58,20 +58,20 @@
   users.users.semyenova = {
     isNormalUser = true;
     description = "Semyenova";
-    
+
     # Basic groups only (no wheel = no sudo)
     extraGroups = [
       "networkmanager" # Network access
       "audio" # Audio devices
       "video" # Video devices
     ];
-    
+
     # Set password after first boot with: sudo passwd semyenova
     # Or set initial password hash with mkpasswd -m sha-512
     # initialPassword = "changeme";  # Set initial password (change on first login)
-    
+
     # Enable shell
-    shell = pkgs.bash;  # or pkgs.zsh if you prefer
+    shell = pkgs.bash; # or pkgs.zsh if you prefer
   };
 
   # Enable ZSH

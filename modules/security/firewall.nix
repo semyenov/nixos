@@ -16,15 +16,15 @@ in
       80 # HTTP
       443 # HTTPS
     ] ++ optionals config.services.openssh.enable [ 22 ]
-      ++ optionals (config.environment.sessionVariables ? DEVELOPMENT) [
-        3000 # Development server
-        3001 # Development server 
-        4200 # Angular dev server
-        5173 # Vite dev server
-        8000 # Python dev server
-        8080 # Alternative HTTP
-        9000 # PHP dev server
-      ];
+    ++ optionals (config.environment.sessionVariables ? DEVELOPMENT) [
+      3000 # Development server
+      3001 # Development server 
+      4200 # Angular dev server
+      5173 # Vite dev server
+      8000 # Python dev server
+      8080 # Alternative HTTP
+      9000 # PHP dev server
+    ];
 
     # Allow specific UDP ports
     allowedUDPPorts = [
@@ -144,10 +144,10 @@ in
   boot.kernel.sysctl = {
     # Core dumps
     "fs.suid_dumpable" = 0;
-    
+
     # Address space layout randomization
     "kernel.randomize_va_space" = 2;
-    
+
     # Network hardening
     "net.ipv4.conf.all.rp_filter" = 1;
     "net.ipv4.conf.default.rp_filter" = 1;

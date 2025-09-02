@@ -8,9 +8,57 @@ NixOS system configuration using Flakes and Home Manager. Modular architecture w
 
 ## Commands
 
-### Unified Management Script (`nix.sh`)
+### Task Runner (Recommended)
 
-All primary operations are handled through the unified `nix.sh` script:
+The project now uses [go-task](https://taskfile.dev) for automation. Install: `nix-shell -p go-task` or add to configuration.
+
+```bash
+# Show all available tasks
+task --list-all
+
+# Common operations
+task rebuild          # Rebuild and switch configuration
+task test            # Test configuration
+task update          # Update flake inputs
+task clean           # Clean old generations
+task setup:init      # Initial system setup
+task rollback        # Rollback to previous generation
+
+# Quick aliases
+task r               # Rebuild (alias)
+task t               # Test (alias)
+task u               # Update (alias)
+task c               # Clean (alias)
+
+# Specific operations
+task rebuild:test    # Test without switching
+task rebuild:boot    # Set as boot default
+task rebuild:trace   # Rebuild with trace
+task update:input INPUT=nixpkgs  # Update specific input
+task clean:keep KEEP=5           # Keep N generations
+
+# V2Ray management
+task v2ray:config URL="vless://..."  # Configure from URL
+task v2ray:status                    # Check service status
+task v2ray:test                      # Test proxy connection
+
+# Setup operations
+task setup:hardware            # Generate hardware config
+task setup:sops               # Setup SOPS encryption
+task setup:validate           # Validate setup
+
+# Git operations
+task git:status              # Show git status
+task git:commit MSG="..."    # Commit changes
+task git:commit:rebuild      # Auto-commit for rebuild
+
+# Task help
+task --summary <task-name>   # Show task details
+```
+
+### Legacy Script (`nix.sh`)
+
+The original shell script is still available:
 
 ```bash
 # Quick rebuild (default command)

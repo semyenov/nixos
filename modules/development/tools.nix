@@ -36,20 +36,20 @@
     xh # Better curl
     httpie
 
-    # File management
-    ranger
-    nnn
-    broot
-    xplr
+    # File management (all lightweight TUI tools)
+    ranger # Vim-like file manager
+    nnn # Blazing fast file manager
+    broot # Tree-based file manager
+    xplr # Hackable file manager
 
-    # System monitoring
-    htop
-    btop
-    iotop
-    nethogs
-    bandwhich
-    procs
-    bottom
+    # System monitoring (all lightweight, keep for different use cases)
+    htop # Classic process viewer
+    btop # Modern resource monitor
+    iotop # IO monitoring
+    nethogs # Network per-process
+    bandwhich # Network utilization
+    procs # Modern ps
+    bottom # Another resource monitor
 
     # Development tools
     direnv
@@ -57,6 +57,7 @@
     watchman
     entr
     just
+    go-task # Modern task runner with YAML config
     gnumake
     cmake
     meson
@@ -69,20 +70,20 @@
     zig
 
     # Database tools
-    sqlite
-    pgcli
-    mycli
-    litecli
-    usql
+    sqlite # Lightweight
+    pgcli # Lightweight CLI
+    mycli # Lightweight CLI
+    litecli # Lightweight CLI
+    usql # Lightweight universal CLI
 
     # Cloud tools
-    awscli2
-    google-cloud-sdk
-    azure-cli
-    terraform
-    kubectl
-    k9s
-    helm
+    # awscli2          # ~500 MB - heavy CLI
+    # google-cloud-sdk # ~500 MB - heavy CLI
+    # azure-cli        # ~500 MB - heavy CLI
+    terraform # Keep lightweight IaC tool
+    kubectl # Keep lightweight k8s tool
+    k9s # Keep lightweight k8s TUI
+    helm # Keep lightweight package manager
 
     # Documentation
     mdbook

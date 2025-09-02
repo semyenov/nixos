@@ -7,7 +7,7 @@ with lib;
 
 let
   cfg = config.services.v2rayWithSecrets;
-  
+
   # Static V2Ray configuration with placeholders
   v2rayConfigTemplate = {
     inbounds = [
@@ -143,7 +143,7 @@ in
       after = [ "network.target" "sops-nix.service" ];
       wants = [ "network.target" "sops-nix.service" ];
       wantedBy = [ "multi-user.target" ];
-      
+
       serviceConfig = {
         Type = "simple";
         User = "root";
@@ -186,7 +186,7 @@ in
         '';
         Restart = "on-failure";
         RestartSec = 10;
-        
+
         # Security hardening
         PrivateTmp = true;
         ProtectSystem = "strict";
@@ -204,7 +204,7 @@ in
     # Add v2ray package
     environment.systemPackages = with pkgs; [
       v2ray
-      jq  # For JSON processing
+      jq # For JSON processing
     ];
   };
 }
