@@ -150,7 +150,7 @@ nix-env --list-generations --profile /nix/var/nix/profiles/system
 
 ### Module Organization
 
-The configuration follows a strict modular architecture:
+The configuration follows a strict modular architecture with 2025 best practices:
 
 ```
 flake.nix                    # Entry point, defines nixosConfigurations and devShells
@@ -163,8 +163,15 @@ flake.nix                    # Entry point, defines nixosConfigurations and devS
 │   ├── desktop/            # GNOME environment
 │   ├── services/           # System services
 │   ├── development/        # Dev tools and languages
-│   ├── security/           # Firewall, SOPS
-│   └── system/             # Performance optimizations
+│   ├── security/           # Firewall, SOPS, hardening profiles
+│   └── system/             # System-level configuration
+│       ├── optimization.nix # Compatibility layer for new modules
+│       ├── performance/    # Modular performance optimization
+│       │   ├── zram.nix   # ZRAM with swappiness=180
+│       │   ├── kernel.nix # Kernel profiles (balanced/performance/low-latency)
+│       │   └── filesystem.nix # Filesystem optimizations
+│       └── maintenance/    # System maintenance
+│           └── auto-update.nix # Auto-updates, monitoring, GC
 ├── users/semyenov/         # Home Manager user configuration
 └── secrets/                # SOPS-encrypted secrets
 ```
@@ -192,6 +199,8 @@ flake.nix                    # Entry point, defines nixosConfigurations and devS
 - `backup.nix` requires valid paths and services to backup
 - `monitoring.nix` depends on network configuration
 - V2Ray service is disabled by default (enable with `services.v2ray.enable = true;`)
+- Performance modules can be used independently or together
+- Security hardening may conflict with some services (start with "minimal" profile)
 
 ## First-Time Setup
 
@@ -269,6 +278,25 @@ grep age1 .sops.yaml
    services.v2ray.enable = true;
    services.backup.enable = true;
    services.monitoring.enable = true;
+   ```
+
+5. **Performance tuning** (2025 best practices):
+   ```nix
+   performance.kernel.profile = "performance";
+   performance.zram.memoryPercent = 75;
+   performance.filesystem.tmpfsSize = "16G";
+   ```
+
+6. **Security hardening** (opt-in):
+   ```nix
+   security.hardening.enable = true;
+   security.hardening.profile = "standard";  # or "hardened" for stronger security
+   ```
+
+7. **Auto-updates** (opt-in):
+   ```nix
+   system.maintenance.autoUpdate.enable = true;
+   system.maintenance.autoUpdate.allowReboot = true;
    ```
 
 ### Testing Changes

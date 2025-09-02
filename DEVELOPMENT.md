@@ -1,6 +1,6 @@
 # Development Guide
 
-This guide helps you develop and maintain this NixOS configuration.
+This guide helps you develop and maintain this NixOS configuration with 2025 best practices for performance, security, and maintainability.
 
 ## Quick Start
 
@@ -145,6 +145,15 @@ task git:commit:rebuild
 ├── Taskfile.yml        # Task automation
 ├── hosts/nixos/        # Host-specific config
 ├── modules/            # Modular configuration
+│   ├── core/           # Essential system config
+│   ├── hardware/       # Hardware drivers
+│   ├── desktop/        # Desktop environment
+│   ├── services/       # System services
+│   ├── development/    # Dev tools
+│   ├── security/       # Security & hardening
+│   └── system/         # System optimization
+│       ├── performance/  # 2025 performance modules
+│       └── maintenance/  # Auto-updates & monitoring
 ├── users/semyenov/     # User configuration
 ├── secrets/            # Encrypted secrets
 ├── shells.nix          # Development shells
@@ -192,6 +201,47 @@ man configuration.nix
 
 ## Best Practices
 
+### 2025 Performance Optimization
+
+1. **ZRAM Configuration**
+   - Use swappiness 150-200 for ZRAM (not 60!)
+   - Enable zstd compression
+   - Consider writeback for incompressible pages
+
+2. **Kernel Profiles**
+   - Start with "balanced" profile
+   - Test "performance" for desktop systems
+   - Use "low-latency" for audio/gaming
+   - Use "throughput" for servers
+
+3. **Filesystem Optimization**
+   - Enable tmpfs for /tmp
+   - Use TRIM for SSDs
+   - Enable NOCOW for VMs and databases
+
+### Security Hardening
+
+1. **Progressive Hardening**
+   ```bash
+   # Start minimal
+   security.hardening.profile = "minimal";
+   task test && task rebuild
+   
+   # Then standard
+   security.hardening.profile = "standard";
+   task test && task rebuild
+   
+   # Finally hardened (if needed)
+   security.hardening.profile = "hardened";
+   ```
+
+2. **Service-Specific Hardening**
+   - Test each service after enabling hardening
+   - Check logs: `journalctl -xe`
+   - Disable problematic hardening per-service
+
+### Development Workflow
+
 1. **Always test before rebuild**
    ```bash
    task test && task rebuild
@@ -220,6 +270,27 @@ man configuration.nix
    - Add descriptions to options
    - Include examples
    - Note dependencies
+
+### Module Development
+
+1. **Create focused modules**
+   - Single responsibility principle
+   - Clear option definitions
+   - Proper mkIf conditions
+
+2. **Use priority helpers**
+   ```nix
+   # For defaults that can be overridden
+   option = mkDefault value;
+   
+   # To force override conflicts
+   option = mkForce value;
+   ```
+
+3. **Test module combinations**
+   - Enable/disable combinations
+   - Check for conflicts
+   - Verify dependencies
 
 ## Troubleshooting
 

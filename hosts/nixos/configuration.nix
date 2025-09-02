@@ -57,7 +57,7 @@
   # Add semyenova user without root privileges
   users.users.semyenova = {
     isNormalUser = true;
-    description = "Semyenova";
+    description = "Semyenova Galina";
 
     # Basic groups only (no wheel = no sudo)
     extraGroups = [
@@ -66,7 +66,7 @@
       "video" # Video devices
     ];
 
-    # Set password after first boot with: sudo passwd semyenova
+    # Set password after first boot with: sudo passwd semyenova  
     # Or set initial password hash with mkpasswd -m sha-512
     # initialPassword = "changeme";  # Set initial password (change on first login)
 

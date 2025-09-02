@@ -12,7 +12,10 @@ A modular NixOS system configuration using Flakes, Home Manager, and SOPS for se
 - 🛠️ **Development Tools** - Multiple languages and environments
 - 🌐 **V2Ray** proxy support
 - 📦 **Docker** container support
-- 🔧 **Modular** architecture
+- 🔧 **Modular** architecture with 2025 best practices
+- ⚡ **Performance Optimizations** - ZRAM, kernel profiles, filesystem tuning
+- 🛡️ **Security Hardening** - Multi-tier security profiles
+- 🔄 **Auto-Updates** - Automated maintenance and monitoring
 
 ## Quick Start
 
@@ -133,9 +136,11 @@ task rebuild
 │   ├── desktop/         # Desktop environment
 │   ├── development/     # Development tools (includes go-task)
 │   ├── hardware/        # Hardware configuration
-│   ├── security/        # Security settings
+│   ├── security/        # Security settings & hardening
 │   ├── services/        # System services
 │   └── system/          # System optimizations
+│       ├── performance/ # Performance modules (zram, kernel, filesystem)
+│       └── maintenance/ # Auto-updates and monitoring
 ├── users/
 │   └── semyenov/        # User home configuration
 ├── secrets/             # SOPS-encrypted secrets
@@ -178,6 +183,56 @@ services.backup.enable = true;
 
 # Enable monitoring
 services.monitoring.enable = true;
+```
+
+### Performance Tuning (2025 Best Practices)
+
+The system includes advanced performance optimizations enabled by default:
+
+```nix
+# Customize performance profiles
+performance.kernel.profile = "performance";  # balanced|performance|low-latency|throughput
+performance.zram.memoryPercent = 75;        # Increase ZRAM size
+performance.zram.swappiness = 180;          # Optimized for ZRAM (default)
+
+# Filesystem optimizations
+performance.filesystem.tmpfsSize = "16G";   # Larger tmpfs for /tmp
+performance.filesystem.enableBtrfsOptimizations = true;
+```
+
+### Security Hardening
+
+Enable progressive security hardening:
+
+```nix
+# Enable security hardening (opt-in)
+security.hardening = {
+  enable = true;
+  profile = "standard";  # minimal|standard|hardened|paranoid
+  enableAppArmor = true;
+  enableAuditd = true;
+};
+```
+
+### System Maintenance
+
+Configure automatic updates and monitoring:
+
+```nix
+# Enable auto-updates (opt-in)
+system.maintenance.autoUpdate = {
+  enable = true;
+  schedule = "04:00";
+  allowReboot = true;  # Allow automatic reboot for kernel updates
+  rebootWindow = {
+    start = "02:00";
+    end = "05:00";
+  };
+};
+
+# Monitoring and cleanup
+system.maintenance.monitoring.diskSpaceThreshold = 85;
+system.maintenance.autoGarbageCollection.keepGenerations = 10;
 ```
 
 ## Secrets Management
@@ -260,6 +315,8 @@ task info:kernel
 ## Documentation
 
 - [CLAUDE.md](CLAUDE.md) - Detailed documentation for Claude AI
+- [DEVELOPMENT.md](DEVELOPMENT.md) - Development guide with shells
+- [modules/README.md](modules/README.md) - Detailed module documentation
 - [secrets/README.md](secrets/README.md) - Secrets management guide
 - `task --list-all` - List all available tasks
 - `task --summary <task-name>` - Show task details
