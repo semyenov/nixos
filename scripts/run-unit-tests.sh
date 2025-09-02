@@ -13,42 +13,65 @@ RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Run module-utils tests
-echo "Testing: lib/module-utils.nix"
-echo "------------------------------"
+EXIT_CODE=0
 
-# Get test counts
-TOTAL=$(nix-instantiate --eval tests/unit/module-utils.nix -A summary.total 2>/dev/null)
-PASSED=$(nix-instantiate --eval tests/unit/module-utils.nix -A summary.passed 2>/dev/null)
-FAILED=$(nix-instantiate --eval tests/unit/module-utils.nix -A summary.failed 2>/dev/null)
-
-echo "  Total tests: $TOTAL"
-echo "  Passed: ${GREEN}$PASSED${NC}"
-echo "  Failed: ${RED}$FAILED${NC}"
-
-# Get overall result
-RESULT=$(nix-instantiate --eval tests/unit/module-utils.nix -A result 2>/dev/null | sed 's/^"//' | sed 's/"$//')
-
-echo ""
-if echo "$RESULT" | grep -q "All tests passed"; then
-    echo -e "${GREEN}✓ $RESULT${NC}"
-    EXIT_CODE=0
-else
-    echo -e "${RED}✗ $RESULT${NC}"
-    # Show failures if any
+# Function to run a test file
+run_test() {
+    local test_file=$1
+    local test_name=$2
+    
+    echo "Testing: $test_name"
+    echo "------------------------------"
+    
+    # Get test counts
+    TOTAL=$(nix-instantiate --eval "$test_file" -A summary.total 2>/dev/null)
+    PASSED=$(nix-instantiate --eval "$test_file" -A summary.passed 2>/dev/null)
+    FAILED=$(nix-instantiate --eval "$test_file" -A summary.failed 2>/dev/null)
+    
+    echo "  Total tests: $TOTAL"
+    echo -e "  Passed: ${GREEN}$PASSED${NC}"
+    echo -e "  Failed: ${RED}$FAILED${NC}"
+    
+    # Get overall result
+    RESULT=$(nix-instantiate --eval "$test_file" -A result 2>/dev/null | sed 's/^"//g' | sed 's/"$//g')
+    
     echo ""
-    echo "Failed tests:"
-    nix-instantiate --eval tests/unit/module-utils.nix -A failures 2>/dev/null || true
-    EXIT_CODE=1
-fi
+    if echo "$RESULT" | grep -q "passed"; then
+        echo -e "${GREEN}✓ $RESULT${NC}"
+    else
+        echo -e "${RED}✗ $RESULT${NC}"
+        # Show failures if any
+        echo ""
+        echo "Failed tests:"
+        nix-instantiate --eval "$test_file" -A failures --strict 2>/dev/null || true
+        EXIT_CODE=1
+    fi
+    echo ""
+}
 
-echo ""
+# Run all test files
+run_test "tests/unit/module-utils.nix" "lib/module-utils.nix"
+run_test "tests/unit/validators.nix" "lib/validators.nix"
+
 echo "========================"
-echo "Test Categories:"
-echo "  • mkPortOption - Port configuration helper"
-echo "  • mkPercentageOption - Percentage value helper"
-echo "  • validators - Email, IP, port validation"
-echo "  • mkAssertion - Assertion builder"
-echo "  • mkScheduleOption - Systemd timer helper"
+echo "Test Summary:"
+if [ $EXIT_CODE -eq 0 ]; then
+    echo -e "${GREEN}✓ All unit tests passed!${NC}"
+else
+    echo -e "${RED}✗ Some tests failed${NC}"
+fi
+echo ""
+echo "Test Coverage:"
+echo "  Module Utils:"
+echo "    • mkPortOption - Port configuration helper"
+echo "    • mkPercentageOption - Percentage value helper"
+echo "    • validators - Email, IP, port validation"
+echo "    • mkAssertion - Assertion builder"
+echo "    • mkScheduleOption - Systemd timer helper"
+echo "  Validators:"
+echo "    • Service dependency validation"
+echo "    • Path existence checks"
+echo "    • Memory size validation"
+echo "    • User/group validation"
 
 exit $EXIT_CODE
