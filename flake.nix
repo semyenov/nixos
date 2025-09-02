@@ -61,21 +61,42 @@
             # Hardware configuration
             ./hosts/nixos/hardware-configuration.nix
 
-            # Modules
+            # Core modules
             ./modules/core/boot.nix
             ./modules/core/nix.nix
+
+            # Hardware modules
             ./modules/hardware/nvidia.nix
+            ./modules/hardware/auto-detect.nix
+
+            # Desktop modules
             ./modules/desktop/gnome.nix
+
+            # Service modules
             ./modules/services/networking.nix
             ./modules/services/audio.nix
             ./modules/services/docker.nix
             ./modules/services/v2ray-secrets.nix
             ./modules/services/backup.nix
             ./modules/services/monitoring.nix
+
+            # Development modules
             ./modules/development/typescript.nix
             ./modules/development/tools.nix
-            ./modules/hardware/auto-detect.nix
+
+            # Security modules
             ./modules/security/firewall.nix
+            ./modules/security/hardening.nix
+
+            # Performance modules (new modular system)
+            ./modules/system/performance/zram.nix
+            ./modules/system/performance/kernel.nix
+            ./modules/system/performance/filesystem.nix
+
+            # Maintenance modules
+            ./modules/system/maintenance/auto-update.nix
+
+            # Compatibility module (uses new modules)
             ./modules/system/optimization.nix
 
             # Home Manager
