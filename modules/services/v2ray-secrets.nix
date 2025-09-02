@@ -1,15 +1,15 @@
 { config, pkgs, lib, ... }:
 
-# This module configures V2Ray with SOPS secrets
-# It uses the official NixOS v2ray module with secrets integration
+# This module provides a custom V2Ray service with SOPS secrets
+# It does not use the official NixOS v2ray module to avoid conflicts
 
 with lib;
 
 let
   cfg = config.services.v2rayWithSecrets;
   
-  # Generate V2Ray config file at build time
-  v2rayConfigFile = pkgs.writeText "v2ray-config.json" (builtins.toJSON {
+  # Static V2Ray configuration with placeholders
+  v2rayConfigTemplate = {
     inbounds = [
       {
         port = 1080;
@@ -34,9 +34,8 @@ let
         settings = {
           vnext = [
             {
-              # These will be replaced at runtime by a wrapper script
               address = "SOPS_SERVER_ADDRESS";
-              port = 443;
+              port = "SOPS_SERVER_PORT";
               users = [
                 {
                   id = "SOPS_USER_ID";
@@ -101,29 +100,7 @@ let
     dns = {
       servers = [ "8.8.8.8" "223.5.5.5" "localhost" ];
     };
-  });
-  
-  # Wrapper script that replaces placeholders with actual secrets
-  v2rayWrapper = pkgs.writeShellScript "v2ray-wrapper" ''
-    # Read secrets
-    SERVER_ADDRESS=$(cat ${config.sops.secrets."v2ray/server_address".path})
-    SERVER_PORT=$(cat ${config.sops.secrets."v2ray/server_port".path})
-    USER_ID=$(cat ${config.sops.secrets."v2ray/user_id".path})
-    PUBLIC_KEY=$(cat ${config.sops.secrets."v2ray/public_key".path})
-    SHORT_ID=$(cat ${config.sops.secrets."v2ray/short_id".path})
-    
-    # Create temporary config with secrets substituted
-    CONFIG_FILE=$(mktemp)
-    cat ${v2rayConfigFile} | \
-      sed "s/SOPS_SERVER_ADDRESS/$SERVER_ADDRESS/g" | \
-      sed "s/443/$SERVER_PORT/g" | \
-      sed "s/SOPS_USER_ID/$USER_ID/g" | \
-      sed "s/SOPS_PUBLIC_KEY/$PUBLIC_KEY/g" | \
-      sed "s/SOPS_SHORT_ID/$SHORT_ID/g" > "$CONFIG_FILE"
-    
-    # Run v2ray with the config
-    exec ${pkgs.v2ray}/bin/v2ray run -config "$CONFIG_FILE"
-  '';
+  };
 in
 {
   options.services.v2rayWithSecrets = {
@@ -160,9 +137,9 @@ in
       };
     };
 
-    # Custom systemd service for V2Ray with secrets
-    systemd.services.v2ray-with-secrets = {
-      description = "V2Ray Service with SOPS Secrets";
+    # Custom systemd service for V2Ray (not using services.v2ray at all)
+    systemd.services.v2ray-custom = {
+      description = "Custom V2Ray Service with SOPS Secrets";
       after = [ "network.target" "sops-nix.service" ];
       wants = [ "network.target" "sops-nix.service" ];
       wantedBy = [ "multi-user.target" ];
@@ -170,7 +147,43 @@ in
       serviceConfig = {
         Type = "simple";
         User = "root";
-        ExecStart = v2rayWrapper;
+        ExecStartPre = pkgs.writeShellScript "v2ray-pre-start" ''
+          # Ensure secrets are available
+          test -f ${config.sops.secrets."v2ray/server_address".path}
+          test -f ${config.sops.secrets."v2ray/server_port".path}
+          test -f ${config.sops.secrets."v2ray/user_id".path}
+          test -f ${config.sops.secrets."v2ray/public_key".path}
+          test -f ${config.sops.secrets."v2ray/short_id".path}
+        '';
+        ExecStart = pkgs.writeShellScript "v2ray-start" ''
+          # Read secrets
+          SERVER_ADDRESS=$(cat ${config.sops.secrets."v2ray/server_address".path})
+          SERVER_PORT=$(cat ${config.sops.secrets."v2ray/server_port".path})
+          USER_ID=$(cat ${config.sops.secrets."v2ray/user_id".path})
+          PUBLIC_KEY=$(cat ${config.sops.secrets."v2ray/public_key".path})
+          SHORT_ID=$(cat ${config.sops.secrets."v2ray/short_id".path})
+          
+          # Create config with secrets
+          CONFIG_FILE=$(mktemp --suffix=.json)
+          trap "rm -f $CONFIG_FILE" EXIT
+          
+          echo '${builtins.toJSON v2rayConfigTemplate}' | \
+            ${pkgs.jq}/bin/jq \
+              --arg addr "$SERVER_ADDRESS" \
+              --arg port "$SERVER_PORT" \
+              --arg uid "$USER_ID" \
+              --arg pubkey "$PUBLIC_KEY" \
+              --arg sid "$SHORT_ID" \
+              '.outbounds[0].settings.vnext[0].address = $addr |
+               .outbounds[0].settings.vnext[0].port = ($port | tonumber) |
+               .outbounds[0].settings.vnext[0].users[0].id = $uid |
+               .outbounds[0].streamSettings.realitySettings.publicKey = $pubkey |
+               .outbounds[0].streamSettings.realitySettings.shortId = $sid' \
+              > "$CONFIG_FILE"
+          
+          # Run v2ray
+          exec ${pkgs.v2ray}/bin/v2ray run -config "$CONFIG_FILE"
+        '';
         Restart = "on-failure";
         RestartSec = 10;
         
@@ -191,6 +204,7 @@ in
     # Add v2ray package
     environment.systemPackages = with pkgs; [
       v2ray
+      jq  # For JSON processing
     ];
   };
 }
