@@ -5,13 +5,13 @@ import ../lib/test-utils.nix ({ pkgs, lib, ... }:
 
 {
   name = "backup-service-test";
-  
+
   nodes = {
     machine = { config, pkgs, ... }: {
       imports = [
         ../../modules/services/system/backup.nix
       ];
-      
+
       # Enable backup service with test configuration
       services.backup = {
         enable = true;
@@ -19,7 +19,7 @@ import ../lib/test-utils.nix ({ pkgs, lib, ... }:
         paths = [ "/tmp/test-data" ];
         schedule = "minutely"; # For testing
       };
-      
+
       # Create test data
       system.activationScripts.testData = ''
         mkdir -p /tmp/test-data
@@ -28,7 +28,7 @@ import ../lib/test-utils.nix ({ pkgs, lib, ... }:
       '';
     };
   };
-  
+
   testScript = ''
     machine.start()
     machine.wait_for_unit("multi-user.target")

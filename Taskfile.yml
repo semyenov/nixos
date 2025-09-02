@@ -158,7 +158,7 @@ tasks:
     cmds:
       - echo "Running unit tests..."
       - cmd: |
-          result=$(nix-instantiate --eval tests/unit/module-utils.nix 2>/dev/null | sed 's/^"//' | sed 's/"$//')
+          result=$(nix-instantiate --eval tests/unit/module-utils.nix -A result 2>/dev/null | sed 's/^"//' | sed 's/"$//')
           echo "$result" | grep -q "All tests passed" && echo "  ✓ Module utils tests passed" || (echo "  ✗ Some tests failed" && exit 1)
         silent: true
       - echo "Unit tests complete"
@@ -171,7 +171,7 @@ tasks:
       WARNING: This can take several minutes and requires significant resources.
     cmds:
       - echo "Running VM tests..."
-      - echo "  Note: VM tests are resource-intensive and may take time"
+      - 'echo "  Note: VM tests are resource-intensive and may take time"'
       - nix-build tests/vm/backup.nix -A driver
       - nix-build tests/vm/firewall.nix -A driver
       - echo "VM tests complete"
@@ -182,15 +182,11 @@ tasks:
       Run a specific VM test.
       Usage: task test:vm:single TEST=backup
     cmds:
-      - echo "Running VM test: {{.TEST}}"
-      - nix-build tests/vm/{{.TEST}}.nix -A driver
-    vars:
-      TEST: '{{.TEST}}'
+      - 'echo "Running VM test: {{.TEST}}"'
+      - 'nix-build tests/vm/{{.TEST}}.nix -A driver'
     preconditions:
-      - sh: test -n "{{.TEST}}"
+      - sh: 'test -n "{{.TEST}}"'
         msg: "Please specify TEST variable (e.g., task test:vm:single TEST=backup)"
-      - sh: test -f "tests/vm/{{.TEST}}.nix"
-        msg: "Test file tests/vm/{{.TEST}}.nix not found"
 
   # ========================
   # System Maintenance

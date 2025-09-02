@@ -5,18 +5,18 @@ import ../lib/test-utils.nix ({ pkgs, lib, ... }:
 
 {
   name = "firewall-test";
-  
+
   nodes = {
     server = { config, pkgs, ... }: {
       imports = [
         ../../modules/security/firewall.nix
       ];
-      
+
       networking.firewall = {
         enable = true;
         allowedTCPPorts = [ 80 ];
       };
-      
+
       # Simple web server for testing
       systemd.services.test-web-server = {
         wantedBy = [ "multi-user.target" ];
@@ -26,12 +26,12 @@ import ../lib/test-utils.nix ({ pkgs, lib, ... }:
         };
       };
     };
-    
+
     client = { config, pkgs, ... }: {
       environment.systemPackages = [ pkgs.curl ];
     };
   };
-  
+
   testScript = ''
     server.start()
     client.start()

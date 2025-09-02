@@ -26,7 +26,7 @@ rec {
   mkPortOption = { default, description ? "Port number", example ? null }:
     mkModuleOption
       {
-        type = types.port;
+        type = lib.types.ints.u16; # Port number type (0-65535)
         inherit default description;
       } // optionalAttrs (example != null) { inherit example; };
 
@@ -34,7 +34,7 @@ rec {
   mkPathOption = { default ? null, description, example ? null }:
     mkModuleOption
       {
-        type = types.path;
+        type = lib.types.path;
         inherit description;
       } // optionalAttrs (default != null) { inherit default; }
     // optionalAttrs (example != null) { inherit example; };
@@ -47,7 +47,7 @@ rec {
   mkStringListOption = { default ? [ ], description, example ? null }:
     mkModuleOption
       {
-        type = types.listOf types.str;
+        type = lib.types.listOf lib.types.str;
         inherit default description;
       } // optionalAttrs (example != null) { inherit example; };
 
@@ -55,14 +55,14 @@ rec {
   mkEnumOption = { values, default, description, example ? null }:
     mkModuleOption
       {
-        type = types.enum values;
+        type = lib.types.enum values;
         inherit default description;
       } // optionalAttrs (example != null) { inherit example; };
 
   # Create a percentage option (0-100)
   mkPercentageOption = { default, description }:
     mkModuleOption {
-      type = types.ints.between 0 100;
+      type = lib.types.ints.between 0 100;
       inherit default description;
     };
 
@@ -70,14 +70,14 @@ rec {
   mkMemoryOption = { default ? null, description, example ? "2G" }:
     mkModuleOption
       {
-        type = types.str;
+        type = lib.types.str;
         inherit description example;
       } // optionalAttrs (default != null) { inherit default; };
 
   # Create a schedule option (systemd timer format)
   mkScheduleOption = { default ? "daily", description ? "Schedule in systemd timer format" }:
     mkModuleOption {
-      type = types.str;
+      type = lib.types.str;
       inherit default description;
       example = "weekly";
     };
@@ -106,7 +106,7 @@ rec {
   # Create a submodule option
   mkSubmoduleOption = { options, description, default ? { } }:
     mkModuleOption {
-      type = types.submodule { inherit options; };
+      type = lib.types.submodule { inherit options; };
       inherit default description;
     };
 
@@ -117,13 +117,13 @@ rec {
     , description ? "Time window"
     }: {
       start = mkModuleOption {
-        type = types.str;
+        type = lib.types.str;
         default = startDefault;
         description = "${description} start time (HH:MM format)";
         example = "03:00";
       };
       end = mkModuleOption {
-        type = types.str;
+        type = lib.types.str;
         default = endDefault;
         description = "${description} end time (HH:MM format)";
         example = "06:00";
@@ -137,13 +137,13 @@ rec {
     , prefix ? ""
     }: {
       "${prefix}limit" = mkModuleOption {
-        type = types.str;
+        type = lib.types.str;
         default = limitDefault;
         description = "Rate limit (e.g., '1/s', '10/m')";
         example = "5/s";
       };
       "${prefix}burst" = mkModuleOption {
-        type = types.int;
+        type = lib.types.int;
         default = burstDefault;
         description = "Burst size for rate limiting";
         example = 5;
@@ -157,7 +157,7 @@ rec {
   # Create a validated integer range option
   mkIntRangeOption = { min, max, default, description }:
     mkModuleOption {
-      type = types.ints.between min max;
+      type = lib.types.ints.between min max;
       inherit default description;
       example = default;
     };
@@ -166,7 +166,7 @@ rec {
   mkNetworkOption = { default ? null, description, example ? "192.168.1.0/24" }:
     mkModuleOption
       {
-        type = types.str;
+        type = lib.types.str;
         inherit description example;
       } // optionalAttrs (default != null) { inherit default; };
 
@@ -255,7 +255,7 @@ rec {
         };
       };
     };
-    
+
     # Service configuration type
     serviceConfig = lib.types.submodule {
       options = {
@@ -281,37 +281,37 @@ rec {
         };
       };
     };
-    
+
     # Time window type
     timeWindow = lib.types.submodule {
-      options = mkTimeWindowOptions {};
+      options = mkTimeWindowOptions { };
     };
-    
+
     # Cron schedule type
     cronSchedule = lib.types.strMatching "(@(yearly|monthly|weekly|daily|hourly)|([0-9,\\-\\*/]+\\s+){4}[0-9,\\-\\*/]+)";
-    
+
     # File path that must exist
     existingPath = lib.types.addCheck lib.types.path (p: builtins.pathExists p);
-    
+
     # Positive integer
     positiveInt = lib.types.ints.positive;
-    
+
     # Memory size (with units)
     memorySize = lib.types.strMatching "[0-9]+(K|M|G|T)?";
-    
+
     # URL type
     url = lib.types.strMatching "^https?://.*";
-    
+
     # Email type
     email = lib.types.strMatching "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
-    
+
     # CIDR network
     cidr = lib.types.strMatching "^([0-9]{1,3}\\.){3}[0-9]{1,3}/[0-9]{1,2}$";
-    
+
     # Domain name
     domain = lib.types.strMatching "^([a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,}$";
   };
-  
+
   # Documentation helpers
   mkDocumentation = {
     # Generate option documentation

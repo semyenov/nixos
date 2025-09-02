@@ -4,27 +4,28 @@
 let
   lib = import <nixpkgs/lib>;
   utils = import ../../lib/module-utils.nix { inherit lib; };
-  
+
   # Test helper to check assertions
   assertEq = actual: expected: name:
     if actual == expected then
       { pass = true; test = name; }
     else
       { pass = false; test = name; actual = actual; expected = expected; };
-  
+
   # Test mkPortOption
-  testMkPortOption = 
-    let 
-      opt = utils.mkPortOption { 
-        default = 8080; 
-        description = "Test port"; 
+  testMkPortOption =
+    let
+      opt = utils.mkPortOption {
+        default = 8080;
+        description = "Test port";
       };
-    in [
-      (assertEq opt.type lib.types.port "mkPortOption creates port type")
+    in
+    [
+      (assertEq opt.type lib.types.ints.u16 "mkPortOption creates port type")
       (assertEq opt.default 8080 "mkPortOption sets default")
       (assertEq opt.description "Test port" "mkPortOption sets description")
     ];
-  
+
   # Test mkPercentageOption
   testMkPercentageOption =
     let
@@ -32,11 +33,12 @@ let
         default = 50;
         description = "Test percentage";
       };
-    in [
-      (assertEq (opt.type.name) "ints.between" "mkPercentageOption creates bounded int")
+    in
+    [
+      (assertEq (opt.type.name) "intBetween" "mkPercentageOption creates bounded int")
       (assertEq opt.default 50 "mkPercentageOption sets default")
     ];
-  
+
   # Test validators
   testValidators = [
     (assertEq (utils.validators.isEmail "test@example.com") true "validates correct email")
@@ -49,28 +51,30 @@ let
     (assertEq (utils.validators.isSystemdTimer "daily") true "validates systemd timer")
     (assertEq (utils.validators.isSystemdTimer "invalid") false "rejects invalid timer")
   ];
-  
+
   # Test mkAssertion
-  testMkAssertion = 
+  testMkAssertion =
     let
       assertion1 = utils.mkAssertion true "This should pass";
       assertion2 = utils.mkAssertion false "This should fail";
-    in [
+    in
+    [
       (assertEq assertion1.assertion true "mkAssertion with true condition")
       (assertEq assertion2.assertion false "mkAssertion with false condition")
       (assertEq (lib.hasPrefix "Configuration error:" assertion1.message) true "mkAssertion message format")
     ];
-  
+
   # Test mkScheduleOption
   testMkScheduleOption =
     let
-      opt = utils.mkScheduleOption {};
-    in [
+      opt = utils.mkScheduleOption { };
+    in
+    [
       (assertEq opt.default "daily" "mkScheduleOption has default")
       (assertEq opt.type lib.types.str "mkScheduleOption is string type")
       (assertEq opt.example "weekly" "mkScheduleOption has example")
     ];
-  
+
   # Combine all tests
   allTests = lib.flatten [
     testMkPortOption
@@ -79,22 +83,24 @@ let
     testMkAssertion
     testMkScheduleOption
   ];
-  
+
   # Count results
   passed = lib.filter (t: t.pass) allTests;
   failed = lib.filter (t: !t.pass) allTests;
-  
-in {
+
+in
+{
   summary = {
     total = lib.length allTests;
     passed = lib.length passed;
     failed = lib.length failed;
   };
-  
+
   failures = failed;
-  
-  result = if lib.length failed == 0 then
-    "✓ All tests passed!"
-  else
-    "✗ ${toString (lib.length failed)} tests failed";
+
+  result =
+    if lib.length failed == 0 then
+      "✓ All tests passed!"
+    else
+      "✗ ${toString (lib.length failed)} tests failed";
 }
