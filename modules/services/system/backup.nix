@@ -4,8 +4,8 @@ with lib;
 
 let
   cfg = config.services.backup;
-  centralConfig = import ../../lib/config.nix;
-  utils = import ../../lib/module-utils.nix { inherit lib; };
+  centralConfig = import ../../../lib/config.nix;
+  utils = import ../../../lib/module-utils.nix { inherit lib; };
   backupConfig = centralConfig.backup;
 in
 {

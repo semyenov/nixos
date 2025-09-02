@@ -7,12 +7,15 @@ with lib;
 
 let
   cfg = config.services.v2rayWithSecrets;
+  centralConfig = import ../../../lib/config.nix;
+  utils = import ../../../lib/module-utils.nix { inherit lib; };
+  ports = centralConfig.network.ports.v2ray;
 
   # Static V2Ray configuration with placeholders
   v2rayConfigTemplate = {
     inbounds = [
       {
-        port = 1080;
+        port = ports.socks;
         protocol = "socks";
         settings = {
           auth = "noauth";
@@ -21,7 +24,7 @@ let
         tag = "socks-in";
       }
       {
-        port = 8118;
+        port = ports.http;
         protocol = "http";
         settings = { };
         tag = "http-in";
@@ -98,40 +101,47 @@ let
     };
 
     dns = {
-      servers = [ "8.8.8.8" "223.5.5.5" "localhost" ];
+      servers = centralConfig.network.dns.primary ++ centralConfig.network.dns.chinese ++ [ "localhost" ];
     };
   };
 in
 {
   options.services.v2rayWithSecrets = {
-    enable = mkEnableOption "V2Ray proxy with SOPS secrets";
+    enable = utils.mkServiceEnableOption "v2rayWithSecrets" "V2Ray proxy service with SOPS-encrypted configuration";
   };
 
   config = mkIf cfg.enable {
+    # Assertions
+    assertions = [
+      (utils.mkAssertion
+        (config.sops.secrets ? "v2ray/server_address")
+        "V2Ray requires SOPS secrets to be configured. Please set up secrets/v2ray.yaml")
+    ];
+
     # Define SOPS secrets for V2Ray
     sops.secrets = {
       "v2ray/server_address" = {
-        sopsFile = ../../secrets/v2ray.yaml;
+        sopsFile = ../../../secrets/v2ray.yaml;
         mode = "0400";
         owner = "root";
       };
       "v2ray/server_port" = {
-        sopsFile = ../../secrets/v2ray.yaml;
+        sopsFile = ../../../secrets/v2ray.yaml;
         mode = "0400";
         owner = "root";
       };
       "v2ray/user_id" = {
-        sopsFile = ../../secrets/v2ray.yaml;
+        sopsFile = ../../../secrets/v2ray.yaml;
         mode = "0400";
         owner = "root";
       };
       "v2ray/public_key" = {
-        sopsFile = ../../secrets/v2ray.yaml;
+        sopsFile = ../../../secrets/v2ray.yaml;
         mode = "0400";
         owner = "root";
       };
       "v2ray/short_id" = {
-        sopsFile = ../../secrets/v2ray.yaml;
+        sopsFile = ../../../secrets/v2ray.yaml;
         mode = "0400";
         owner = "root";
       };

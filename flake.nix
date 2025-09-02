@@ -72,17 +72,11 @@
             # Desktop modules
             ./modules/desktop/gnome.nix
 
-            # Service modules
-            ./modules/services/networking.nix
-            ./modules/services/audio.nix
-            ./modules/services/docker.nix
-            ./modules/services/v2ray-secrets.nix
-            ./modules/services/backup.nix
-            ./modules/services/monitoring.nix
+            # Service modules (using index files)
+            ./modules/services  # Imports all service modules via default.nix
 
-            # Development modules
-            ./modules/development/typescript.nix
-            ./modules/development/tools.nix
+            # Development modules (using index files)
+            ./modules/development  # Imports all development modules via default.nix
 
             # Security modules
             ./modules/security/firewall.nix
