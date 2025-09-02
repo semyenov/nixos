@@ -3,7 +3,7 @@
 
 let
   lib = import <nixpkgs/lib>;
-  
+
   # Mock config for testing
   mockConfig = {
     services = {
@@ -14,22 +14,22 @@ let
       networking = { enable = true; };
       prometheus = { enable = true; };
     };
-    users.users.testuser = {};
-    users.groups.testgroup = {};
+    users.users.testuser = { };
+    users.groups.testgroup = { };
   };
-  
+
   validators = import ../../lib/validators.nix { inherit lib; config = mockConfig; };
-  
+
   # Test helper
   assertEq = actual: expected: name:
     if actual == expected then
       { pass = true; test = name; }
     else
       { pass = false; test = name; actual = actual; expected = expected; };
-  
+
   # Test service dependency validation
   testServiceDependencies = [
-    (assertEq 
+    (assertEq
       (validators.validators.serviceDependencies "v2rayWithSecrets" [ "sops" ])
       true
       "validates service dependencies are met")
@@ -38,7 +38,7 @@ let
       false
       "detects missing service dependencies")
   ];
-  
+
   # Test path validation
   testPathValidation = [
     (assertEq
@@ -47,7 +47,7 @@ let
       "validates existing path")
     # This test will throw an error if path doesn't exist, so we can't test false case directly
   ];
-  
+
   # Test memory size validation
   testMemoryValidation = [
     (assertEq
@@ -63,12 +63,12 @@ let
       false
       "rejects invalid memory size format")
   ];
-  
+
   # Test cron schedule validation - simplified due to regex issues
   testCronValidation = [
     # Skipping cron validation tests due to Nix regex limitations
   ];
-  
+
   # Test user/group existence
   testUserGroupValidation = [
     (assertEq
@@ -84,7 +84,7 @@ let
       true
       "validates existing group")
   ];
-  
+
   # Test dependency resolution
   testDependencyResolution = [
     (assertEq
@@ -93,9 +93,9 @@ let
       "validates monitoring dependencies are met")
     # This would throw for missing deps, so we can't test false case directly
   ];
-  
+
   # Additional validation tests can be added here
-  
+
   # Combine all tests
   allTests = lib.flatten [
     testServiceDependencies
@@ -105,11 +105,11 @@ let
     testUserGroupValidation
     testDependencyResolution
   ];
-  
+
   # Count results
   passed = lib.filter (t: t.pass) allTests;
   failed = lib.filter (t: !t.pass) allTests;
-  
+
 in
 {
   summary = {
@@ -117,9 +117,9 @@ in
     passed = lib.length passed;
     failed = lib.length failed;
   };
-  
+
   failures = map (t: "${t.test}: expected '${toString t.expected}' but got '${toString t.actual}'") failed;
-  
+
   result =
     if lib.length failed == 0 then
       "✓ All validator tests passed!"
