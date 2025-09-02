@@ -6,7 +6,10 @@
       "Bash(nix flake check:*)",
       "Bash(chmod:*)",
       "Bash(cat:*)",
-      "Bash(./test-config.sh:*)"
+      "Bash(./test-config.sh:*)",
+      "Bash(grep:*)",
+      "Bash(rm:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

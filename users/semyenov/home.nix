@@ -5,10 +5,10 @@
   home = {
     username = "semyenov";
     homeDirectory = "/home/semyenov";
-    
+
     # This value determines the Home Manager release
     stateVersion = "25.05";
-    
+
     # Packages to install for this user
     packages = with pkgs; [
       # Communication
@@ -17,23 +17,23 @@
       # discord  # Temporarily disabled due to download issues
       slack
       zoom-us
-      
+
       # Browsers
       brave
       google-chrome
-      
+
       # Security
       gopass
       gopass-jsonapi
       bitwarden
       keepassxc
-      
+
       # Gaming
       lutris
       steam
       mangohud
       gamemode
-      
+
       # Development
       code-cursor
       claude-code
@@ -41,47 +41,51 @@
       jetbrains.idea-community
       postman
       dbeaver-bin
-      
+
       # Terminal emulators
       ghostty
       kitty
       warp-terminal
-      
+
       # Media
       vlc
       mpv
       spotify
       obs-studio
-      kdePackages.kdenlive  # Qt 6 version
+      kdePackages.kdenlive # Qt 6 version
       gimp
       inkscape
-      
+
       # Office
       libreoffice
       obsidian
       logseq
       zotero
-      
+
       # Utilities
       flameshot
       peek
-      kooha  # Screen recorder
+      kooha # Screen recorder
       wl-clipboard
       xclip
     ];
-    
+
     # Session variables
     sessionVariables = {
       EDITOR = "nvim";
       BROWSER = "brave";
       TERMINAL = "ghostty";
-      
+
       # Development
       PNPM_HOME = "$HOME/.local/share/pnpm";
       NPM_CONFIG_PREFIX = "$HOME/.npm-global";
       PATH = "$PATH:$HOME/.npm-global/bin:$HOME/.local/share/pnpm";
+
+      # Wayland support for Electron apps
+      NIXOS_OZONE_WL = "1";
+      ELECTRON_OZONE_PLATFORM_HINT = "auto";
     };
-    
+
     # File associations
     file = {
       ".gitconfig".text = ''
@@ -112,13 +116,11 @@
         [rerere]
           enabled = true
       '';
-      
+
       ".config/ghostty/config".text = ''
-        font-family = "JetBrains Mono"
+        font-family = JetBrains Mono
         font-size = 14
-        theme = dark
         cursor-style = block
-        cursor-blink = true
         background-opacity = 0.95
         window-decoration = true
         clipboard-read = allow
@@ -128,18 +130,18 @@
       '';
     };
   };
-  
+
   # Program configurations
   programs = {
     # Enable Home Manager
     home-manager.enable = true;
-    
+
     # Git
     git = {
       enable = true;
       userName = "Alexander Semyenov";
-      userEmail = "semyenov@example.com";
-      
+      userEmail = "semyenov@hotmail.com";
+
       delta = {
         enable = true;
         options = {
@@ -149,13 +151,13 @@
           line-numbers = true;
         };
       };
-      
+
       extraConfig = {
         core.editor = "nvim";
         init.defaultBranch = "main";
         pull.rebase = true;
       };
-      
+
       aliases = {
         st = "status";
         co = "checkout";
@@ -166,14 +168,14 @@
         lg = "log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit";
       };
     };
-    
+
     # ZSH
     zsh = {
       enable = true;
       enableCompletion = true;
       autosuggestion.enable = true;
       syntaxHighlighting.enable = true;
-      
+
       history = {
         size = 100000;
         save = 100000;
@@ -182,7 +184,7 @@
         ignoreSpace = true;
         share = true;
       };
-      
+
       initContent = ''
         # Load completions
         autoload -Uz compinit && compinit
@@ -198,20 +200,20 @@
         # Auto-suggest accept
         bindkey '^ ' autosuggest-accept
       '';
-      
+
       shellAliases = {
         # System
         rebuild = "sudo nixos-rebuild switch --flake ~/Projects#nixos";
         update = "nix flake update";
         clean = "sudo nix-collect-garbage -d && nix-collect-garbage -d";
-        
+
         # Navigation
         ll = "eza -la --icons";
         ls = "eza --icons";
         la = "eza -a --icons";
         lt = "eza --tree --icons";
         cd = "z";
-        
+
         # Git
         g = "git";
         gs = "git status";
@@ -220,16 +222,18 @@
         gl = "git pull";
         gd = "git diff";
         ga = "git add";
-        
+
         # Development
         v = "nvim";
         c = "code";
-        
+        cursor-x11 = "ELECTRON_OZONE_PLATFORM_HINT=x11 cursor";
+        cursor-wayland = "ELECTRON_OZONE_PLATFORM_HINT=wayland cursor";
+
         # Docker
         d = "docker";
         dc = "docker-compose";
         dps = "docker ps";
-        
+
         # Package managers
         ni = "pnpm install";
         nr = "pnpm run";
@@ -238,7 +242,7 @@
         nt = "pnpm test";
       };
     };
-    
+
     # Starship prompt
     starship = {
       enable = true;
@@ -246,38 +250,38 @@
       settings = {
         format = "$all$character";
         add_newline = true;
-        
+
         character = {
           success_symbol = "[➜](bold green)";
           error_symbol = "[➜](bold red)";
         };
-        
+
         directory = {
           truncation_length = 3;
           truncate_to_repo = true;
         };
-        
+
         git_branch = {
           symbol = "🌱 ";
         };
-        
+
         nodejs = {
           symbol = "⬢ ";
         };
-        
+
         package = {
           disabled = false;
         };
       };
     };
-    
+
     # Direnv
     direnv = {
       enable = true;
       enableZshIntegration = true;
       nix-direnv.enable = true;
     };
-    
+
     # FZF
     fzf = {
       enable = true;
@@ -290,13 +294,13 @@
         "--inline-info"
       ];
     };
-    
+
     # Zoxide
     zoxide = {
       enable = true;
       enableZshIntegration = true;
     };
-    
+
     # Bat
     bat = {
       enable = true;
@@ -305,25 +309,25 @@
         pager = "less -FR";
       };
     };
-    
+
     # Eza
     eza = {
       enable = true;
       icons = "auto";
       git = true;
     };
-    
+
     # Neovim
     neovim = {
       enable = true;
       defaultEditor = true;
       viAlias = true;
       vimAlias = true;
-      
+
       plugins = with pkgs.vimPlugins; [
         # Theme
         tokyonight-nvim
-        
+
         # Core
         nvim-treesitter.withAllGrammars
         telescope-nvim
@@ -333,13 +337,13 @@
         cmp-buffer
         cmp-path
         luasnip
-        
+
         # UI
         lualine-nvim
         nvim-tree-lua
         bufferline-nvim
         gitsigns-nvim
-        
+
         # Utilities
         comment-nvim
         nvim-autopairs
@@ -348,7 +352,7 @@
       ];
     };
   };
-  
+
   # GNOME configuration
   dconf.settings = {
     "org/gnome/desktop/interface" = {
@@ -357,22 +361,22 @@
       clock-show-seconds = true;
       clock-show-weekday = true;
     };
-    
+
     "org/gnome/desktop/peripherals/keyboard" = {
       repeat-interval = 30;
       delay = 250;
     };
-    
+
     "org/gnome/desktop/peripherals/mouse" = {
       accel-profile = "flat";
       speed = 0.0;
     };
-    
+
     "org/gnome/desktop/wm/preferences" = {
       button-layout = "appmenu:minimize,maximize,close";
       focus-mode = "click";
     };
-    
+
     "org/gnome/shell" = {
       disable-user-extensions = false;
       enabled-extensions = [
@@ -384,7 +388,7 @@
         "clipboard-indicator@tudmotu.com"
       ];
     };
-    
+
     "org/gnome/shell/extensions/dash-to-dock" = {
       dock-position = "BOTTOM";
       dock-fixed = true;
@@ -397,12 +401,12 @@
       background-opacity = 0.8;
     };
   };
-  
+
   # Services
   services = {
     # Syncthing
     syncthing = {
-      enable = false;  # Enable if needed
+      enable = false; # Enable if needed
     };
   };
 }

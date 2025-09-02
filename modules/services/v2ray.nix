@@ -1,10 +1,16 @@
 { config, pkgs, lib, ... }:
 
+let
+  # V2Ray configuration can be enabled/disabled
+  cfg = config.services.v2ray;
+in
+
 {
   # V2Ray service configuration with VLESS
+  # NOTE: Set services.v2ray.enable = true in your host config to enable
   services.v2ray = {
-    enable = true;
-    
+    enable = lib.mkDefault false; # Disabled by default
+
     config = {
       # Inbound configuration for local SOCKS/HTTP proxy
       inbounds = [
@@ -20,11 +26,11 @@
         {
           port = 8118;
           protocol = "http";
-          settings = {};
+          settings = { };
           tag = "http-in";
         }
       ];
-      
+
       # Outbound configuration for VLESS
       outbounds = [
         {
@@ -32,11 +38,21 @@
           settings = {
             vnext = [
               {
-                address = "2ppn.viapip.com";
-                port = 8080;
+                # Use SOPS secrets if available, otherwise use example values
+                address =
+                  if config.sops.secrets ? "v2ray/server_address"
+                  then lib.strings.fileContents config.sops.secrets."v2ray/server_address".path
+                  else "2ppn.viapip.com";
+                port =
+                  if config.sops.secrets ? "v2ray/server_port"
+                  then lib.toInt (lib.strings.fileContents config.sops.secrets."v2ray/server_port".path)
+                  else 8080;
                 users = [
                   {
-                    id = "16bb4a8e-5ff5-429f-8df4-d0b8169caf2b";
+                    id =
+                      if config.sops.secrets ? "v2ray/user_id"
+                      then lib.strings.fileContents config.sops.secrets."v2ray/user_id".path
+                      else "16bb4a8e-5ff5-429f-8df4-d0b8169caf2b";
                     encryption = "none";
                     flow = "";
                   }
@@ -50,8 +66,14 @@
             realitySettings = {
               serverName = "google.com";
               fingerprint = "firefox";
-              publicKey = "S9JCk4TdwTxWkzzLd4gtBQjzdKzqK8w_1FUmvA2gPAs";
-              shortId = "98502117";
+              publicKey =
+                if config.sops.secrets ? "v2ray/public_key"
+                then lib.strings.fileContents config.sops.secrets."v2ray/public_key".path
+                else "S9JCk4TdwTxWkzzLd4gtBQjzdKzqK8w_1FUmvA2gPAs";
+              shortId =
+                if config.sops.secrets ? "v2ray/short_id"
+                then lib.strings.fileContents config.sops.secrets."v2ray/short_id".path
+                else "98502117";
               spiderX = "/";
             };
           };
@@ -59,16 +81,16 @@
         }
         {
           protocol = "freedom";
-          settings = {};
+          settings = { };
           tag = "direct";
         }
         {
           protocol = "blackhole";
-          settings = {};
+          settings = { };
           tag = "block";
         }
       ];
-      
+
       # Routing rules
       routing = {
         domainStrategy = "IPIfNonMatch";
@@ -107,7 +129,7 @@
           }
         ];
       };
-      
+
       # DNS configuration
       dns = {
         servers = [
@@ -128,7 +150,7 @@
           "localhost"
         ];
       };
-      
+
       # Policy configuration
       policy = {
         levels = {
@@ -151,12 +173,12 @@
       };
     };
   };
-  
+
   # Open firewall ports for local proxy
   networking.firewall = {
     allowedTCPPorts = [ 1080 8118 ];
   };
-  
+
   # System proxy environment variables (optional)
   # Uncomment to set system-wide proxy
   # environment.sessionVariables = {
@@ -165,7 +187,7 @@
   #   socks_proxy = "socks5://127.0.0.1:1080";
   #   no_proxy = "localhost,127.0.0.0/8,::1";
   # };
-  
+
   # Add v2ray package
   environment.systemPackages = with pkgs; [
     v2ray

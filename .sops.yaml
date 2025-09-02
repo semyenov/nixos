@@ -1,29 +1,20 @@
 # SOPS configuration for secrets management
-# This file defines which keys can decrypt which secrets
-
-# To generate age key:
-# age-keygen -o ~/.config/sops/age/keys.txt
-
-# To convert SSH key to age:
-# ssh-to-age < ~/.ssh/id_ed25519.pub
+# Auto-generated on Вт 02 сен 2025 16:14:37 MSK
 
 keys:
-  # Add your age public key here after generating
-  # - &user_semyenov age1...
-  
-  # System host key (generate with ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key)
-  # - &host_nixos age1...
+  - &user_semyenov age1gf6np9xyuu6s4ypa6kwf3jrja4eay268rqsg8a8hwy278gecm3gq9qm6n2
+  - &host_nixos age1ct7849dqccf6j3hsze9m265ekwx6pu3s76vcpy8gljt4wjrh7ypquevsjn
 
 creation_rules:
   # Default rule for all secrets
-  - path_regex: secrets/[^/]+\.yaml$
+  - path_regex: secrets/[^/]+\.(yaml|json|env|ini)$
     key_groups:
       - age:
-          # - *user_semyenov
-          # - *host_nixos
-          
+          - *user_semyenov
+          - *host_nixos
+  
   # User-specific secrets
   - path_regex: secrets/users/[^/]+\.yaml$
     key_groups:
       - age:
-          # - *user_semyenov
+          - *user_semyenov
