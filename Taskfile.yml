@@ -126,17 +126,23 @@ tasks:
     cmds:
       - |
         echo "Checking Nix file formatting..."
-        # Verify formatter is configured in flake
-        # The actual format check can timeout on large repos, so we just verify setup
-        echo "  ✓ Formatter configured (nixpkgs-fmt)"
-        echo "  Run 'task format' to auto-format all Nix files"
+        # Use nixpkgs-fmt directly to check formatting without timeout
+        if nix-shell -p nixpkgs-fmt --run "nixpkgs-fmt --check ." 2>/dev/null; then
+          echo "  ✓ All Nix files properly formatted"
+        else
+          echo "  ⚠ Some files need formatting (run 'task format')"
+        fi
 
   format:
     desc: "Format all Nix files"
     cmds:
-      - echo "Formatting Nix files..."
-      - nix --extra-experimental-features 'nix-command flakes' fmt
-      - echo "Formatting complete"
+      - |
+        echo "Formatting Nix files..."
+        # Use nixpkgs-fmt directly to avoid nix fmt timeout issues
+        nix-shell -p nixpkgs-fmt --run "nixpkgs-fmt ." 2>/dev/null || \
+        nix --extra-experimental-features 'nix-command flakes' \
+          shell nixpkgs#nixpkgs-fmt -c nixpkgs-fmt .
+        echo "Formatting complete"
 
   # ========================
   # System Maintenance
