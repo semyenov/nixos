@@ -1,0 +1,408 @@
+{ config, pkgs, inputs, ... }:
+
+{
+  # Home Manager configuration for semyenov
+  home = {
+    username = "semyenov";
+    homeDirectory = "/home/semyenov";
+    
+    # This value determines the Home Manager release
+    stateVersion = "25.05";
+    
+    # Packages to install for this user
+    packages = with pkgs; [
+      # Communication
+      thunderbird
+      telegram-desktop
+      # discord  # Temporarily disabled due to download issues
+      slack
+      zoom-us
+      
+      # Browsers
+      brave
+      google-chrome
+      
+      # Security
+      gopass
+      gopass-jsonapi
+      bitwarden
+      keepassxc
+      
+      # Gaming
+      lutris
+      steam
+      mangohud
+      gamemode
+      
+      # Development
+      code-cursor
+      claude-code
+      vscode
+      jetbrains.idea-community
+      postman
+      dbeaver-bin
+      
+      # Terminal emulators
+      ghostty
+      kitty
+      warp-terminal
+      
+      # Media
+      vlc
+      mpv
+      spotify
+      obs-studio
+      kdePackages.kdenlive  # Qt 6 version
+      gimp
+      inkscape
+      
+      # Office
+      libreoffice
+      obsidian
+      logseq
+      zotero
+      
+      # Utilities
+      flameshot
+      peek
+      kooha  # Screen recorder
+      wl-clipboard
+      xclip
+    ];
+    
+    # Session variables
+    sessionVariables = {
+      EDITOR = "nvim";
+      BROWSER = "brave";
+      TERMINAL = "ghostty";
+      
+      # Development
+      PNPM_HOME = "$HOME/.local/share/pnpm";
+      NPM_CONFIG_PREFIX = "$HOME/.npm-global";
+      PATH = "$PATH:$HOME/.npm-global/bin:$HOME/.local/share/pnpm";
+    };
+    
+    # File associations
+    file = {
+      ".gitconfig".text = ''
+        [user]
+          name = Alexander Semyenov
+          email = semyenov@hotmail.com
+        
+        [core]
+          editor = nvim
+          autocrlf = input
+          whitespace = trailing-space,space-before-tab
+        
+        [init]
+          defaultBranch = main
+        
+        [pull]
+          rebase = true
+        
+        [fetch]
+          prune = true
+        
+        [diff]
+          colorMoved = zebra
+        
+        [merge]
+          conflictStyle = diff3
+        
+        [rerere]
+          enabled = true
+      '';
+      
+      ".config/ghostty/config".text = ''
+        font-family = "JetBrains Mono"
+        font-size = 14
+        theme = dark
+        cursor-style = block
+        cursor-blink = true
+        background-opacity = 0.95
+        window-decoration = true
+        clipboard-read = allow
+        clipboard-write = allow
+        clipboard-paste-protection = true
+        bold-is-bright = false
+      '';
+    };
+  };
+  
+  # Program configurations
+  programs = {
+    # Enable Home Manager
+    home-manager.enable = true;
+    
+    # Git
+    git = {
+      enable = true;
+      userName = "Alexander Semyenov";
+      userEmail = "semyenov@example.com";
+      
+      delta = {
+        enable = true;
+        options = {
+          navigate = true;
+          light = false;
+          side-by-side = true;
+          line-numbers = true;
+        };
+      };
+      
+      extraConfig = {
+        core.editor = "nvim";
+        init.defaultBranch = "main";
+        pull.rebase = true;
+      };
+      
+      aliases = {
+        st = "status";
+        co = "checkout";
+        br = "branch";
+        ci = "commit";
+        unstage = "reset HEAD --";
+        last = "log -1 HEAD";
+        lg = "log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit";
+      };
+    };
+    
+    # ZSH
+    zsh = {
+      enable = true;
+      enableCompletion = true;
+      autosuggestion.enable = true;
+      syntaxHighlighting.enable = true;
+      
+      history = {
+        size = 100000;
+        save = 100000;
+        path = "$HOME/.zsh_history";
+        ignoreDups = true;
+        ignoreSpace = true;
+        share = true;
+      };
+      
+      initContent = ''
+        # Load completions
+        autoload -Uz compinit && compinit
+        
+        # Better history search
+        bindkey '^R' history-incremental-search-backward
+        bindkey '^S' history-incremental-search-forward
+        
+        # Better word navigation
+        bindkey '^[[1;5C' forward-word
+        bindkey '^[[1;5D' backward-word
+        
+        # Auto-suggest accept
+        bindkey '^ ' autosuggest-accept
+      '';
+      
+      shellAliases = {
+        # System
+        rebuild = "sudo nixos-rebuild switch --flake ~/Projects#nixos";
+        update = "nix flake update";
+        clean = "sudo nix-collect-garbage -d && nix-collect-garbage -d";
+        
+        # Navigation
+        ll = "eza -la --icons";
+        ls = "eza --icons";
+        la = "eza -a --icons";
+        lt = "eza --tree --icons";
+        cd = "z";
+        
+        # Git
+        g = "git";
+        gs = "git status";
+        gc = "git commit";
+        gp = "git push";
+        gl = "git pull";
+        gd = "git diff";
+        ga = "git add";
+        
+        # Development
+        v = "nvim";
+        c = "code";
+        
+        # Docker
+        d = "docker";
+        dc = "docker-compose";
+        dps = "docker ps";
+        
+        # Package managers
+        ni = "pnpm install";
+        nr = "pnpm run";
+        nd = "pnpm run dev";
+        nb = "pnpm run build";
+        nt = "pnpm test";
+      };
+    };
+    
+    # Starship prompt
+    starship = {
+      enable = true;
+      enableZshIntegration = true;
+      settings = {
+        format = "$all$character";
+        add_newline = true;
+        
+        character = {
+          success_symbol = "[➜](bold green)";
+          error_symbol = "[➜](bold red)";
+        };
+        
+        directory = {
+          truncation_length = 3;
+          truncate_to_repo = true;
+        };
+        
+        git_branch = {
+          symbol = "🌱 ";
+        };
+        
+        nodejs = {
+          symbol = "⬢ ";
+        };
+        
+        package = {
+          disabled = false;
+        };
+      };
+    };
+    
+    # Direnv
+    direnv = {
+      enable = true;
+      enableZshIntegration = true;
+      nix-direnv.enable = true;
+    };
+    
+    # FZF
+    fzf = {
+      enable = true;
+      enableZshIntegration = true;
+      defaultCommand = "fd --type f --hidden --follow --exclude .git";
+      defaultOptions = [
+        "--height 40%"
+        "--layout=reverse"
+        "--border"
+        "--inline-info"
+      ];
+    };
+    
+    # Zoxide
+    zoxide = {
+      enable = true;
+      enableZshIntegration = true;
+    };
+    
+    # Bat
+    bat = {
+      enable = true;
+      config = {
+        theme = "TwoDark";
+        pager = "less -FR";
+      };
+    };
+    
+    # Eza
+    eza = {
+      enable = true;
+      icons = "auto";
+      git = true;
+    };
+    
+    # Neovim
+    neovim = {
+      enable = true;
+      defaultEditor = true;
+      viAlias = true;
+      vimAlias = true;
+      
+      plugins = with pkgs.vimPlugins; [
+        # Theme
+        tokyonight-nvim
+        
+        # Core
+        nvim-treesitter.withAllGrammars
+        telescope-nvim
+        nvim-lspconfig
+        nvim-cmp
+        cmp-nvim-lsp
+        cmp-buffer
+        cmp-path
+        luasnip
+        
+        # UI
+        lualine-nvim
+        nvim-tree-lua
+        bufferline-nvim
+        gitsigns-nvim
+        
+        # Utilities
+        comment-nvim
+        nvim-autopairs
+        which-key-nvim
+        toggleterm-nvim
+      ];
+    };
+  };
+  
+  # GNOME configuration
+  dconf.settings = {
+    "org/gnome/desktop/interface" = {
+      color-scheme = "prefer-dark";
+      enable-hot-corners = false;
+      clock-show-seconds = true;
+      clock-show-weekday = true;
+    };
+    
+    "org/gnome/desktop/peripherals/keyboard" = {
+      repeat-interval = 30;
+      delay = 250;
+    };
+    
+    "org/gnome/desktop/peripherals/mouse" = {
+      accel-profile = "flat";
+      speed = 0.0;
+    };
+    
+    "org/gnome/desktop/wm/preferences" = {
+      button-layout = "appmenu:minimize,maximize,close";
+      focus-mode = "click";
+    };
+    
+    "org/gnome/shell" = {
+      disable-user-extensions = false;
+      enabled-extensions = [
+        "appindicatorsupport@rgcjonas.gmail.com"
+        "dash-to-dock@micxgx.gmail.com"
+        "blur-my-shell@aunetx"
+        "Vitals@CoreCoding.com"
+        "caffeine@patapon.info"
+        "clipboard-indicator@tudmotu.com"
+      ];
+    };
+    
+    "org/gnome/shell/extensions/dash-to-dock" = {
+      dock-position = "BOTTOM";
+      dock-fixed = true;
+      extend-height = false;
+      dash-max-icon-size = 48;
+      show-trash = false;
+      show-mounts = false;
+      custom-theme-shrink = true;
+      transparency-mode = "DYNAMIC";
+      background-opacity = 0.8;
+    };
+  };
+  
+  # Services
+  services = {
+    # Syncthing
+    syncthing = {
+      enable = false;  # Enable if needed
+    };
+  };
+}
