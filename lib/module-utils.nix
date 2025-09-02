@@ -233,6 +233,85 @@ rec {
         message;
   };
 
+  # Custom types for common configurations
+  types = {
+    # Network configuration type
+    networkConfig = lib.types.submodule {
+      options = {
+        address = mkOption {
+          type = lib.types.str;
+          description = "Network address";
+          example = "192.168.1.100";
+        };
+        port = mkOption {
+          type = lib.types.port;
+          description = "Network port";
+          example = 8080;
+        };
+        protocol = mkOption {
+          type = lib.types.enum [ "tcp" "udp" "both" ];
+          default = "tcp";
+          description = "Network protocol";
+        };
+      };
+    };
+    
+    # Service configuration type
+    serviceConfig = lib.types.submodule {
+      options = {
+        enable = mkOption {
+          type = lib.types.bool;
+          default = false;
+          description = "Whether to enable the service";
+        };
+        port = mkOption {
+          type = lib.types.nullOr lib.types.port;
+          default = null;
+          description = "Service port";
+        };
+        user = mkOption {
+          type = lib.types.str;
+          default = "nobody";
+          description = "User to run the service as";
+        };
+        group = mkOption {
+          type = lib.types.str;
+          default = "nogroup";
+          description = "Group to run the service as";
+        };
+      };
+    };
+    
+    # Time window type
+    timeWindow = lib.types.submodule {
+      options = mkTimeWindowOptions {};
+    };
+    
+    # Cron schedule type
+    cronSchedule = lib.types.strMatching "(@(yearly|monthly|weekly|daily|hourly)|([0-9,\\-\\*/]+\\s+){4}[0-9,\\-\\*/]+)";
+    
+    # File path that must exist
+    existingPath = lib.types.addCheck lib.types.path (p: builtins.pathExists p);
+    
+    # Positive integer
+    positiveInt = lib.types.ints.positive;
+    
+    # Memory size (with units)
+    memorySize = lib.types.strMatching "[0-9]+(K|M|G|T)?";
+    
+    # URL type
+    url = lib.types.strMatching "^https?://.*";
+    
+    # Email type
+    email = lib.types.strMatching "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
+    
+    # CIDR network
+    cidr = lib.types.strMatching "^([0-9]{1,3}\\.){3}[0-9]{1,3}/[0-9]{1,2}$";
+    
+    # Domain name
+    domain = lib.types.strMatching "^([a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,}$";
+  };
+  
   # Documentation helpers
   mkDocumentation = {
     # Generate option documentation

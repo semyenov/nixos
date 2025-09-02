@@ -110,6 +110,7 @@ tasks:
     cmds:
       - task: test:flake
       - task: test:format
+      - task: test:unit
       - echo "All tests passed!"
 
   test:flake:
@@ -151,6 +152,45 @@ tasks:
       - cmd: nix-shell -p nixpkgs-fmt --run "nixpkgs-fmt ."
         silent: true
       - echo "Formatting complete"
+
+  test:unit:
+    desc: "Run unit tests for modules"
+    cmds:
+      - echo "Running unit tests..."
+      - cmd: |
+          result=$(nix-instantiate --eval tests/unit/module-utils.nix 2>/dev/null | sed 's/^"//' | sed 's/"$//')
+          echo "$result" | grep -q "All tests passed" && echo "  ✓ Module utils tests passed" || (echo "  ✗ Some tests failed" && exit 1)
+        silent: true
+      - echo "Unit tests complete"
+
+  test:vm:
+    desc: "Run VM integration tests"
+    summary: |
+      Run NixOS VM tests for services.
+      This will build and run VMs to test configurations.
+      WARNING: This can take several minutes and requires significant resources.
+    cmds:
+      - echo "Running VM tests..."
+      - echo "  Note: VM tests are resource-intensive and may take time"
+      - nix-build tests/vm/backup.nix -A driver
+      - nix-build tests/vm/firewall.nix -A driver
+      - echo "VM tests complete"
+
+  test:vm:single:
+    desc: "Run a single VM test"
+    summary: |
+      Run a specific VM test.
+      Usage: task test:vm:single TEST=backup
+    cmds:
+      - echo "Running VM test: {{.TEST}}"
+      - nix-build tests/vm/{{.TEST}}.nix -A driver
+    vars:
+      TEST: '{{.TEST}}'
+    preconditions:
+      - sh: test -n "{{.TEST}}"
+        msg: "Please specify TEST variable (e.g., task test:vm:single TEST=backup)"
+      - sh: test -f "tests/vm/{{.TEST}}.nix"
+        msg: "Test file tests/vm/{{.TEST}}.nix not found"
 
   # ========================
   # System Maintenance

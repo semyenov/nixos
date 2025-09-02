@@ -73,10 +73,10 @@
             ./modules/desktop/gnome.nix
 
             # Service modules (using index files)
-            ./modules/services  # Imports all service modules via default.nix
+            ./modules/services # Imports all service modules via default.nix
 
             # Development modules (using index files)
-            ./modules/development  # Imports all development modules via default.nix
+            ./modules/development # Imports all development modules via default.nix
 
             # Security modules
             ./modules/security/firewall.nix
