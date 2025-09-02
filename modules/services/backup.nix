@@ -118,9 +118,25 @@ in
     };
   };
 
-  config = mkIf cfg.enable (
-    # Simple mode - Borg only with full features
-    if cfg.mode == "simple" || cfg.provider == "borg" then {
+  config = mkIf cfg.enable (mkMerge [
+    # Common assertions for all modes
+    {
+      assertions = [
+        {
+          assertion = !cfg.encryption.enable || 
+                     (cfg.encryption.passphraseFile != null || 
+                      config.sops.secrets ? "backup/passphrase");
+          message = "Backup encryption is enabled but no passphrase source is configured";
+        }
+        {
+          assertion = cfg.retention.daily >= 1;
+          message = "At least one daily backup must be retained";
+        }
+      ];
+    }
+    
+    # Mode-specific configuration
+    (if cfg.mode == "simple" || cfg.provider == "borg" then {
       # SOPS secret for backup encryption passphrase
       sops.secrets = mkIf cfg.encryption.enable {
         "backup/passphrase" = {
@@ -304,20 +320,6 @@ in
         restic
         autorestic
       ];
-    }
-  ) // {
-    # Common assertions for all modes
-    assertions = [
-      {
-        assertion = !cfg.encryption.enable || 
-                   (cfg.encryption.passphraseFile != null || 
-                    config.sops.secrets ? "backup/passphrase");
-        message = "Backup encryption is enabled but no passphrase source is configured";
-      }
-      {
-        assertion = cfg.retention.daily >= 1;
-        message = "At least one daily backup must be retained";
-      }
-    ];
-  };
+    })
+  ]);
 }
