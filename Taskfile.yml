@@ -116,7 +116,18 @@ tasks:
     desc: "Validate flake configuration"
     cmds:
       - echo "Checking flake configuration..."
-      - nix --extra-experimental-features 'nix-command flakes' flake check --no-build
+      - nix --extra-experimental-features 'nix-command flakes' flake check --no-build {{.EXTRA_ARGS}}
+    vars:
+      EXTRA_ARGS: '{{.EXTRA_ARGS | default ""}}'
+    preconditions:
+      - sh: test -f flake.nix
+        msg: "flake.nix not found"
+
+  test:flake:all:
+    desc: "Validate flake configuration for all systems"
+    cmds:
+      - echo "Checking flake configuration for all systems..."
+      - nix --extra-experimental-features 'nix-command flakes' flake check --no-build --all-systems
     preconditions:
       - sh: test -f flake.nix
         msg: "flake.nix not found"

@@ -7,11 +7,8 @@ This directory contains encrypted secrets managed by SOPS (Secrets OPerationS) w
 ### Initial Setup
 
 ```bash
-# Using Taskfile (recommended)
+# Using Taskfile
 task setup:sops
-
-# Or using legacy script
-./nix.sh sops
 
 # Or manually:
 # 1. Generate age key
@@ -226,5 +223,5 @@ age -d -i ~/.config/sops/age/keys.txt secrets/v2ray.yaml
 4. Enable service and rebuild:
    ```bash
    task rebuild
-   # Or: ./nix.sh rebuild
+   # Or manually: sudo nixos-rebuild switch --flake .#nixos
    ```

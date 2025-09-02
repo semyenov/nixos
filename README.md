@@ -21,7 +21,7 @@ A modular NixOS system configuration using Flakes, Home Manager, and SOPS for se
 - NixOS installed (or installing)
 - Git installed
 - Basic understanding of Nix
-- [go-task](https://taskfile.dev) (optional, can use legacy scripts)
+- [go-task](https://taskfile.dev) for task automation
 
 ### Installation
 
@@ -39,27 +39,17 @@ A modular NixOS system configuration using Flakes, Home Manager, and SOPS for se
 
 3. **Run automated setup**:
    ```bash
-   # Using Taskfile (recommended)
    task setup:init
-   
-   # Or using legacy script
-   ./nix.sh setup
    ```
 
 4. **Rebuild system**:
    ```bash
-   # Using Taskfile
    task rebuild
-   
-   # Or using legacy script
-   ./nix.sh rebuild
    ```
 
 ## Usage
 
 ### Daily Operations
-
-#### Using Taskfile (Recommended)
 
 ```bash
 # Show all available tasks
@@ -82,25 +72,6 @@ task rollback
 
 # Show system info
 task info
-```
-
-#### Using Legacy Script
-
-```bash
-# Rebuild system (default command)
-./nix.sh
-
-# Update flake inputs
-./nix.sh update
-
-# Clean old generations
-./nix.sh clean
-
-# Rollback to previous
-./nix.sh rollback
-
-# Test configuration
-./nix.sh test
 ```
 
 ### Development Environments
@@ -168,10 +139,7 @@ task rebuild
 ├── users/
 │   └── semyenov/        # User home configuration
 ├── secrets/             # SOPS-encrypted secrets
-├── scripts/
-│   └── lib/             # Shell script libraries
-├── shells.nix           # Development shells
-└── nix.sh              # Legacy management script
+└── shells.nix           # Development shells
 ```
 
 ## Configuration
@@ -296,13 +264,12 @@ task info:kernel
 - `task --list-all` - List all available tasks
 - `task --summary <task-name>` - Show task details
 - `task help` - General help
-- `./nix.sh help` - Legacy script help
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Test your changes: `./nix.sh test`
+3. Test your changes: `task test`
 4. Submit a pull request
 
 ## License

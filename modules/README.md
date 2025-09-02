@@ -128,9 +128,6 @@ Some modules depend on others:
    ```bash
    task test
    task rebuild
-   # Or using legacy script:
-   # ./nix.sh test
-   # ./nix.sh rebuild
    ```
 
 ## Best Practices

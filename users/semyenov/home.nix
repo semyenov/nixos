@@ -216,9 +216,9 @@
 
       shellAliases = {
         # System
-        rebuild = "sudo nixos-rebuild switch --flake ~/Projects#nixos";
-        update = "nix flake update";
-        clean = "sudo nix-collect-garbage -d && nix-collect-garbage -d";
+        rebuild = "task rebuild";
+        update = "task update";
+        clean = "task clean";
 
         # Navigation
         ll = "eza -la --icons";

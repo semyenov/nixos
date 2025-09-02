@@ -8,9 +8,9 @@ NixOS system configuration using Flakes and Home Manager. Modular architecture w
 
 ## Commands
 
-### Task Runner (Recommended)
+### Task Runner
 
-The project now uses [go-task](https://taskfile.dev) for automation. Install: `nix-shell -p go-task` or add to configuration.
+The project uses [go-task](https://taskfile.dev) for automation. Install: `nix-shell -p go-task` or add to configuration.
 
 ```bash
 # Show all available tasks
@@ -56,106 +56,55 @@ task git:commit:rebuild      # Auto-commit for rebuild
 task --summary <task-name>   # Show task details
 ```
 
-### Legacy Script (`nix.sh`)
-
-The original shell script is still available:
-
-```bash
-# Quick rebuild (default command)
-./nix.sh
-
-# Full system setup wizard
-./nix.sh setup
-
-# Test configuration
-./nix.sh test
-
-# Update flake inputs
-./nix.sh update
-
-# Clean old generations
-./nix.sh clean
-
-# Rollback to previous generation
-./nix.sh rollback
-
-# Setup SOPS encryption
-./nix.sh sops
-
-# Show help
-./nix.sh help
-
-# Command-specific help
-./nix.sh rebuild --help
-```
-
 ### Rebuild Operations
 
 ```bash
-# Quick rebuild with auto-staging
-./nix.sh rebuild
+# Quick rebuild
+task rebuild
 
 # Test configuration without switching
-./nix.sh rebuild test
-
-# Update and rebuild
-./nix.sh rebuild -u
-
-# Dry run (preview changes)
-./nix.sh rebuild -n
-
-# Verbose output with trace
-./nix.sh rebuild -v
+task rebuild:test
 
 # Build for boot only
-./nix.sh rebuild boot
-```
+task rebuild:boot
 
-### Setup Workflow
+# Rebuild with trace
+task rebuild:trace
 
-```bash
-# Interactive setup for new system
-./nix.sh setup
-
-# Quick setup (auto-yes to all)
-./nix.sh setup -q
-
-# Only SOPS setup
-./nix.sh setup --skip-hardware --skip-test --skip-build
-
-# Only hardware configuration
-./nix.sh setup --skip-sops --skip-test --skip-build
+# Dry run
+task rebuild:dry
 ```
 
 ### Testing & Validation
 
 ```bash
 # Run all tests
-./nix.sh test
+task test
 
-# Run specific tests
-./nix.sh test syntax flake
+# Validate flake configuration
+task test:flake
 
-# Quick validation with fail-fast
-./nix.sh test -f
+# Check all systems
+task test:flake:all
 
-# Generate JSON report
-./nix.sh test --format json > report.json
-
-# Available tests: syntax, flake, build, modules, secrets, hardware, security
+# Check formatting
+task test:format
 ```
 
 ### V2Ray Configuration
 
 ```bash
 # Configure V2Ray from VLESS URL
-./configure-v2ray.sh 'vless://UUID@server:port?pbk=...&sid=...'
+task v2ray:config URL='vless://UUID@server:port?pbk=...&sid=...'
 
-# Dry run to preview
-./configure-v2ray.sh -n 'vless://...'
+# Check service status
+task v2ray:status
 
-# Force overwrite existing
-./configure-v2ray.sh -f 'vless://...'
+# Test proxy connection
+task v2ray:test
+
+# View logs
+task v2ray:logs
 ```
 
 ### Development Shells
@@ -217,8 +166,7 @@ flake.nix                    # Entry point, defines nixosConfigurations and devS
 │   ├── security/           # Firewall, SOPS
 │   └── system/             # Performance optimizations
 ├── users/semyenov/         # Home Manager user configuration
-├── secrets/                # SOPS-encrypted secrets
-└── scripts/lib/common.sh   # Shared bash library
+└── secrets/                # SOPS-encrypted secrets
 ```
 
 ### Module Loading Order
@@ -240,7 +188,7 @@ flake.nix                    # Entry point, defines nixosConfigurations and devS
 
 ### Service Dependencies
 
-- `v2ray-sops.nix` requires `sops.nix` to be loaded
+- `v2ray-secrets.nix` requires `sops.nix` to be loaded
 - `backup.nix` requires valid paths and services to backup
 - `monitoring.nix` depends on network configuration
 - V2Ray service is disabled by default (enable with `services.v2ray.enable = true;`)
@@ -256,27 +204,24 @@ flake.nix                    # Entry point, defines nixosConfigurations and devS
 
 2. **Setup SOPS encryption**:
    ```bash
-   ./nix.sh sops
+   task setup:sops
    ```
 
 3. **Configure V2Ray** (optional):
    ```bash
-   ./configure-v2ray.sh 'vless://YOUR_URL_HERE'
+   task v2ray:config URL='vless://YOUR_URL_HERE'
    ```
 
 4. **Build and switch**:
    ```bash
-   ./nix.sh rebuild
+   task rebuild
    ```
 
 ### Automated Setup
 
 ```bash
 # Full interactive setup
-./nix.sh setup
-
-# Quick setup (auto-yes)
-./nix.sh setup -q
+task setup:init
 ```
 
 ## Working with Secrets
@@ -331,13 +276,13 @@ grep age1 .sops.yaml
 Always test before applying:
 ```bash
 # Validate syntax and configuration
-./nix.sh test
+task test
 
 # Test build without switching
-./nix.sh rebuild test
+task rebuild:test
 
 # Apply if successful
-./nix.sh rebuild
+task rebuild
 ```
 
 ## Common Pitfalls
@@ -346,7 +291,7 @@ Always test before applying:
 2. **SOPS decryption fails**: Ensure age key exists at `~/.config/sops/age/keys.txt`
 3. **Hardware config missing**: Must generate with `nixos-generate-config --dir hosts/nixos/`
 4. **Service failures**: Check with `systemctl status <service>` and `journalctl -xeu <service>`
-5. **Disk space issues**: Run `./nix.sh clean` to remove old generations
+5. **Disk space issues**: Run `task clean` to remove old generations
 6. **Home Manager conflicts**: Creates `.backup` files when configs conflict with existing files
 
 ## Troubleshooting
@@ -357,7 +302,7 @@ journalctl -xe
 journalctl -u v2ray.service  # Service-specific
 
 # Build errors with trace
-./nix.sh rebuild -v
+task rebuild:trace
 
 # Home Manager errors
 home-manager switch --flake .#semyenov --show-trace
@@ -366,37 +311,9 @@ home-manager switch --flake .#semyenov --show-trace
 nix profile diff-closures --profile /nix/var/nix/profiles/system
 
 # Garbage collection
-./nix.sh clean
+task clean
 
 # Store optimization
 nix-store --optimise
 ```
 
-## Script Library (`scripts/lib/common.sh`)
-
-The common library provides extensive utilities for all scripts:
-
-### Logging Functions
-- `log_debug`, `log_info`, `log_warn`, `log_error`, `log_critical`
-- `print_success`, `print_warning`, `print_error`, `print_info`, `print_step`
-- `print_header` - Section headers
-- `spinner` - Progress spinner for long operations
-- `progress_bar` - Progress bar for batch operations
-
-### Utility Functions
-- `command_exists` - Check if command is available
-- `is_root`, `require_root`, `require_non_root` - Permission checks
-- `confirm` - Interactive confirmations
-- `retry_with_backoff` - Retry failed operations
-- `create_temp_file`, `create_temp_dir` - Temporary file management
-- `acquire_lock`, `release_lock` - Script locking
-- `backup_file` - Create timestamped backups
-- `check_requirements` - Verify required commands
-- `parse_options` - Standard option parsing
-
-### Error Handling
-- `setup_error_handling` - Enable comprehensive error trapping
-- `error_handler` - Automatic stack traces on errors
-- `cleanup_on_exit` - Cleanup temporary files and locks
-
-All scripts should source this library for consistent behavior and user experience.

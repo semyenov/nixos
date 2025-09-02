@@ -13,7 +13,8 @@
       "Bash(nix --extra-experimental-features 'nix-command flakes' flake check --no-build)",
       "Bash(./nix.sh test:*)",
       "Bash(task:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
