@@ -262,6 +262,11 @@ tasks:
     cmds:
       - nix --extra-experimental-features 'nix-command flakes' develop
 
+  shell:nixos:
+    desc: "Enter NixOS configuration development shell"
+    cmds:
+      - nix --extra-experimental-features 'nix-command flakes' develop '.#nixos'
+
   shell:typescript:
     desc: "Enter TypeScript development shell"
     cmds:

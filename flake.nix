@@ -102,7 +102,8 @@
           shells = import ./shells.nix { inherit pkgs; };
         in
         shells // {
-          default = pkgs.mkShell {
+          # Default to the nixos configuration development shell
+          default = shells.nixos or pkgs.mkShell {
             buildInputs = with pkgs; [
               nixpkgs-fmt
               nil
@@ -116,7 +117,7 @@
 
             shellHook = ''
               echo "NixOS development environment"
-              echo "Available shells: typescript, python, rust, go, cpp, database, datascience, devops, mobile, security"
+              echo "Available shells: nixos, typescript, python, rust, go, cpp, database, datascience, devops, mobile, security"
               echo "Run 'task shell:<name>' or 'nix develop .#<name>'"
             '';
           };

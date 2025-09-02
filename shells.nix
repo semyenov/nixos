@@ -1,6 +1,83 @@
 { pkgs ? import <nixpkgs> { } }:
 
 {
+  # NixOS configuration development shell
+  nixos = pkgs.mkShell {
+    name = "nixos-config-dev";
+    buildInputs = with pkgs; [
+      # Nix tools
+      nixpkgs-fmt      # Format nix files
+      nil              # Nix LSP
+      statix           # Lint nix files
+      deadnix          # Find dead nix code
+      nix-tree         # Visualize dependencies
+      nix-diff         # Diff nix derivations
+      nix-prefetch     # Prefetch sources
+      nix-output-monitor # Better nix build output
+      nvd              # Nix version diff
+      
+      # Task automation
+      go-task          # Task runner
+      
+      # Secrets management
+      sops             # Encrypt/decrypt secrets
+      age              # Encryption tool
+      ssh-to-age       # Convert SSH keys to age
+      
+      # Git tools
+      git              # Version control
+      gh               # GitHub CLI
+      git-crypt        # Transparent file encryption in git
+      
+      # System tools
+      htop             # Process viewer
+      btop             # Better process viewer
+      ncdu             # Disk usage analyzer
+      tree             # Directory tree viewer
+      jq               # JSON processor
+      yq               # YAML processor
+      ripgrep          # Fast grep
+      fd               # Fast find
+      bat              # Better cat
+      eza              # Better ls
+      
+      # Documentation
+      mdbook           # Create books from markdown
+      pandoc           # Document converter
+    ];
+
+    shellHook = ''
+      echo "🚀 NixOS Configuration Development Environment"
+      echo ""
+      echo "📦 Available tools:"
+      echo "  • Nix: nixpkgs-fmt, nil, statix, deadnix, nix-tree"
+      echo "  • Task: task (run 'task --list-all' for commands)"
+      echo "  • Secrets: sops, age"
+      echo "  • Git: git, gh"
+      echo "  • Utils: jq, yq, ripgrep, fd, bat, eza"
+      echo ""
+      echo "🔧 Quick commands:"
+      echo "  task test       - Run all tests"
+      echo "  task rebuild    - Rebuild system"
+      echo "  task format     - Format nix files"
+      echo "  task clean      - Clean old generations"
+      echo ""
+      echo "📝 Project: $(pwd)"
+      echo "🌿 Git branch: $(git branch --show-current 2>/dev/null || echo 'not in git repo')"
+      
+      # Set up useful aliases for this session
+      alias ll="eza -la --icons"
+      alias cat="bat"
+      alias find="fd"
+      alias grep="rg"
+      
+      # Ensure task completion is available
+      if command -v task &> /dev/null; then
+        eval "$(task --completion bash 2>/dev/null || true)"
+      fi
+    '';
+  };
+
   # TypeScript/JavaScript development shell
   typescript = pkgs.mkShell {
     name = "typescript-dev";
