@@ -93,8 +93,8 @@ Some modules are disabled by default and must be explicitly enabled:
 
 Some modules depend on others:
 
-1. **v2ray-sops.nix** → requires **sops.nix**
-2. **backup.nix** → requires services to backup
+1. **v2ray-secrets.nix** → requires **sops.nix** and SOPS secrets configured
+2. **backup.nix** → standalone, works with any configuration
 3. **monitoring.nix** → requires **networking.nix**
 
 ## Adding New Modules
