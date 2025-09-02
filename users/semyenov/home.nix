@@ -198,7 +198,7 @@
         share = true;
       };
 
-      initExtra = ''
+      initContent = ''
         # Load completions
         autoload -Uz compinit && compinit
         
@@ -423,7 +423,7 @@
       enableSshSupport = true;
       defaultCacheTtl = 86400;
       maxCacheTtl = 172800;
-      pinentryPackage = pkgs.pinentry-gnome3;
+      pinentry.package = pkgs.pinentry-gnome3;
     };
     
     # Syncthing
