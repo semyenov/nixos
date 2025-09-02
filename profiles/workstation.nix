@@ -49,13 +49,9 @@
   };
 
   # Docker for development
-  virtualisation.docker = {
+  services.docker = {
     enable = true;
-    enableOnBoot = true;
-    autoPrune = {
-      enable = true;
-      dates = "weekly";
-    };
+    profile = "development";
   };
 
   # Backup configuration
@@ -111,15 +107,13 @@
   services.power-profiles-daemon.enable = true;
   services.thermald.enable = true;
 
-  # Additional workstation packages
+  # Additional workstation packages (core packages in host config)
   environment.systemPackages = with pkgs; [
-    # Browsers
-    firefox
+    # Browsers (firefox enabled via programs.firefox.enable in host config)
     brave
 
     # Development
     vscode
-    git
     docker-compose
 
     # Productivity
@@ -130,8 +124,7 @@
     vlc
     spotify
 
-    # Utils
-    htop
+    # System monitoring (htop in host config)
     btop
     ncdu
   ];

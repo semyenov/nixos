@@ -65,25 +65,25 @@
             # Modules are loaded in priority order (higher priority = earlier loading)
 
             # Core modules (Priority: 100)
-            ./modules/core/index.nix
+            ./modules/core
 
             # Hardware modules (Priority: 90)
-            ./modules/hardware/index.nix
+            ./modules/hardware
 
             # System modules (Priority: 85)
-            ./modules/system/index.nix
+            ./modules/system
 
             # Security modules (Priority: 80)
-            ./modules/security/index.nix
+            ./modules/security
 
             # Service modules (Priority: 70)
-            ./modules/services/index.nix
+            ./modules/services
 
             # Desktop modules (Priority: 60)
-            ./modules/desktop/index.nix
+            ./modules/desktop
 
             # Development modules (Priority: 40)
-            ./modules/development/index.nix
+            ./modules/development
 
             # Home Manager
             home-manager.nixosModules.home-manager
@@ -125,8 +125,8 @@
 
             shellHook = ''
               echo "NixOS development environment"
-              echo "Available shells: nixos, typescript, python, rust, go, cpp, database, datascience, devops, mobile, security"
-              echo "Run 'task shell:<name>' or 'nix develop .#<name>'"
+              echo "Available shells: nixos, web, systems, ops, mobile"
+              echo "Run 'nix develop .#<name>' to enter specialized environment"
             '';
           };
         });

@@ -1,89 +1,99 @@
+# Development Shells
+# Modular shell environments with shared base and specialized extensions
+
 { pkgs ? import <nixpkgs> { } }:
 
-{
-  # NixOS configuration development shell
-  nixos = pkgs.mkShell {
-    name = "nixos-config-dev";
+let
+  inherit (pkgs) lib;
+  # Base shell with common development tools
+  baseShell = pkgs.mkShell {
+    name = "base-dev";
     buildInputs = with pkgs; [
-      # Nix tools
-      nixpkgs-fmt # Format nix files
-      nil # Nix LSP
-      statix # Lint nix files
-      deadnix # Find dead nix code
-      nix-tree # Visualize dependencies
-      nix-diff # Diff nix derivations
-      nix-prefetch # Prefetch sources
-      nix-output-monitor # Better nix build output
-      nvd # Nix version diff
-
-      # Task automation
-      go-task # Task runner
-
-      # Secrets management
-      sops # Encrypt/decrypt secrets
-      age # Encryption tool
-      ssh-to-age # Convert SSH keys to age
-
-      # Git tools
-      git # Version control
-      gh # GitHub CLI
-      git-crypt # Transparent file encryption in git
-
-      # System tools
-      htop # Process viewer
-      btop # Better process viewer
-      ncdu # Disk usage analyzer
-      tree # Directory tree viewer
-      jq # JSON processor
-      yq # YAML processor
-      ripgrep # Fast grep
-      fd # Fast find
-      bat # Better cat
-      eza # Better ls
-
-      # Documentation
-      mdbook # Create books from markdown
-      pandoc # Document converter
+      # Core development tools
+      git
+      gh
+      jq
+      yq
+      ripgrep
+      fd
+      bat
+      eza
+      tree
+      htop
+      btop
+      ncdu
     ];
 
     shellHook = ''
-      echo "🚀 NixOS Configuration Development Environment"
-      echo ""
+      # Set up useful aliases
+      alias ll="eza -la --icons"
+      alias la="eza -a --icons"
+      alias lt="eza --tree --icons"
+    '';
+  };
+
+  # Create specialized shell by extending base shell
+  mkSpecializedShell = name: description: extraPackages: extraHook:
+    baseShell.overrideAttrs (oldAttrs: {
+      name = "${name}-dev";
+      buildInputs = oldAttrs.buildInputs ++ extraPackages;
+      shellHook = oldAttrs.shellHook + "\n" + ''
+        echo "🚀 ${description}"
+        echo "📝 Project: $(pwd)"
+        echo "🌿 Git branch: $(git branch --show-current 2>/dev/null || echo 'not in git repo')"
+        echo ""
+      '' + extraHook;
+    });
+in
+{
+  # NixOS configuration development shell
+  nixos = mkSpecializedShell
+    "NixOS Configuration"
+    "NixOS Configuration Development Environment"
+    (with pkgs; [
+      # Nix tools
+      nixpkgs-fmt
+      nil
+      statix
+      deadnix
+      nix-tree
+      nix-diff
+      nix-prefetch
+      nix-output-monitor
+      nvd
+
+      # Task automation
+      go-task
+
+      # Secrets management
+      sops
+      age
+      ssh-to-age
+      git-crypt
+
+      # Documentation
+      mdbook
+      pandoc
+    ])
+    ''
       echo "📦 Available tools:"
       echo "  • Nix: nixpkgs-fmt, nil, statix, deadnix, nix-tree"
       echo "  • Task: task (run 'task --list-all' for commands)"
       echo "  • Secrets: sops, age"
       echo "  • Git: git, gh"
-      echo "  • Utils: jq, yq, ripgrep (rg), fd, bat, eza"
       echo ""
       echo "🔧 Quick commands:"
       echo "  task test       - Run all tests"
       echo "  task rebuild    - Rebuild system"
       echo "  task format     - Format nix files"
       echo "  task clean      - Clean old generations"
-      echo ""
-      echo "📝 Project: $(pwd)"
-      echo "🌿 Git branch: $(git branch --show-current 2>/dev/null || echo 'not in git repo')"
-      
-      # Set up useful aliases that don't override standard commands
-      alias ll="eza -la --icons"
-      alias la="eza -a --icons"
-      alias lt="eza --tree --icons"
-      
-      # Suggest using the modern tools without forcing them
-      echo ""
-      echo "💡 Modern CLI tools available:"
-      echo "  • 'eza' for better ls (alias: ll, la, lt)"
-      echo "  • 'bat' for syntax-highlighted cat"
-      echo "  • 'fd' for faster find"
-      echo "  • 'rg' for faster grep (ripgrep)"
     '';
-  };
 
-  # TypeScript/JavaScript development shell
-  typescript = pkgs.mkShell {
-    name = "typescript-dev";
-    buildInputs = with pkgs; [
+  # Web development (TypeScript/JavaScript)
+  web = mkSpecializedShell
+    "Web Development"
+    "TypeScript/JavaScript Development Environment"
+    (with pkgs; [
       nodejs_22
       nodePackages.pnpm
       nodePackages.yarn
@@ -93,349 +103,130 @@
       nodePackages.prettier
       bun
       deno
-    ];
-
-    shellHook = ''
-      echo "TypeScript Development Environment"
+    ])
+    ''
       echo "Node: $(node --version)"
-      echo "PNPM: $(pnpm --version)"
       echo "TypeScript: $(tsc --version)"
-      export PATH="$PWD/node_modules/.bin:$PATH"
+      echo "Available runtimes: node, bun, deno"
+      echo "Package managers: npm, yarn, pnpm"
     '';
-  };
 
-  # Python development shell
-  python = pkgs.mkShell {
-    name = "python-dev";
-    buildInputs = with pkgs; [
-      python312
-      python312Packages.pip
-      python312Packages.virtualenv
-      python312Packages.setuptools
-      python312Packages.wheel
-      python312Packages.pytest
-      python312Packages.black
-      python312Packages.flake8
-      python312Packages.mypy
-      python312Packages.ipython
-      python312Packages.jupyter
-      poetry
-      ruff
-      pyright
-    ];
-
-    shellHook = ''
-      echo "Python Development Environment"
-      echo "Python: $(python --version)"
-      echo "Poetry: $(poetry --version)"
-      
-      # Create virtual environment if it doesn't exist
-      if [ ! -d .venv ]; then
-        echo "Creating virtual environment..."
-        python -m venv .venv
-      fi
-      source .venv/bin/activate
-    '';
-  };
-
-  # Rust development shell
-  rust = pkgs.mkShell {
-    name = "rust-dev";
-    buildInputs = with pkgs; [
+  # Systems programming (Rust/Go/C++)
+  systems = mkSpecializedShell
+    "Systems Programming"
+    "Rust/Go/C++ Development Environment"
+    (with pkgs; [
+      # Rust
       rustc
       cargo
-      rustfmt
       rust-analyzer
+      rustfmt
       clippy
-      cargo-watch
-      cargo-edit
-      cargo-outdated
-      cargo-audit
-      cargo-bloat
-      cargo-expand
-      sccache
-    ];
 
-    shellHook = ''
-      echo "Rust Development Environment"
-      echo "Rust: $(rustc --version)"
-      echo "Cargo: $(cargo --version)"
-      export RUST_BACKTRACE=1
-      export RUST_SRC_PATH="${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}"
-    '';
-  };
-
-  # Go development shell
-  go = pkgs.mkShell {
-    name = "go-dev";
-    buildInputs = with pkgs; [
+      # Go
       go
       gopls
-      go-tools
       golangci-lint
-      delve
-      gomodifytags
-      gotests
-      impl
-      gocode-gomod
-    ];
 
-    shellHook = ''
-      echo "Go Development Environment"
-      echo "Go: $(go version)"
-      export GOPATH="$HOME/go"
-      export PATH="$GOPATH/bin:$PATH"
-    '';
-  };
-
-  # C/C++ development shell
-  cpp = pkgs.mkShell {
-    name = "cpp-dev";
-    buildInputs = with pkgs; [
+      # C/C++
       gcc
       clang
       cmake
       ninja
-      meson
-      pkg-config
       gdb
-      lldb
-      # valgrind  # Broken on macOS
-      clang-tools
-      cppcheck
-      doxygen
-      boost
-      catch2
-    ];
-
-    shellHook = ''
-      echo "C/C++ Development Environment"
-      echo "GCC: $(gcc --version | head -n1)"
-      echo "Clang: $(clang --version | head -n1)"
-      echo "CMake: $(cmake --version | head -n1)"
+      pkg-config
+    ] ++ lib.optionals pkgs.stdenv.isLinux [
+      # Linux-only tools
+      valgrind
+    ])
+    ''
+      echo "🦀 Rust: $(rustc --version)"
+      echo "🐹 Go: $(go version)"
+      echo "🔧 C/C++: $(gcc --version | head -1)"
+      echo ""
+      echo "Available tools:"
+      echo "  • Rust: cargo, rust-analyzer, clippy"
+      echo "  • Go: go, gopls, golangci-lint"
+      echo "  • C/C++: gcc, clang, cmake, gdb"
     '';
-  };
 
-  # DevOps shell
-  devops = pkgs.mkShell {
-    name = "devops";
-    buildInputs = with pkgs; [
-      # Cloud tools
-      awscli2
-      google-cloud-sdk
-      azure-cli
-      doctl
+  # Data & DevOps
+  ops = mkSpecializedShell
+    "Data & DevOps"
+    "Data Science & DevOps Environment"
+    (with pkgs; [
+      # Python data science
+      python311
+      python311Packages.pip
+      python311Packages.virtualenv
+      python311Packages.jupyter
+      python311Packages.pandas
+      python311Packages.numpy
+      python311Packages.matplotlib
 
-      # Kubernetes
-      kubectl
-      kubernetes-helm
-      k9s
-      kind
-      minikube
-      kustomize
-      kubeseal
-
-      # Infrastructure as Code
-      terraform
-      terragrunt
-      packer
-      ansible
-      pulumi
-
-      # CI/CD
-      github-cli
-      # gitlab  # Linux-only
-      # jenkins  # Platform-specific
-
-      # Container tools
+      # DevOps tools  
+      docker
       docker-compose
-      podman
-      # buildah  # May have platform issues
-      skopeo
-      dive
+      kubectl
+      helm
+      terraform
+      ansible
 
-      # Monitoring  
-      # prometheus  # Server app, may have issues
-      # grafana  # Server app, may have issues
-      # telegraf  # May have platform issues
-    ];
-
-    shellHook = ''
-      echo "DevOps Environment"
-      echo "Terraform: $(terraform version | head -n1)"
-      echo "Kubectl: $(kubectl version --client --short)"
-      echo "Docker: $(docker --version)"
-    '';
-  };
-
-  # Database development shell
-  database = pkgs.mkShell {
-    name = "database-dev";
-    buildInputs = with pkgs; [
+      # Database tools
       postgresql
-      mysql80
-      redis
-      mongodb
       sqlite
-
-      # Clients
-      pgcli
-      mycli
-      litecli
-      mongosh
       redis
 
-      # Migration tools
-      flyway
-      liquibase
-      dbmate
-
-      # GUI tools
-      dbeaver-bin
-      pgadmin4
-    ];
-
-    shellHook = ''
-      echo "Database Development Environment"
-      echo "PostgreSQL: $(psql --version)"
-      echo "MySQL: $(mysql --version)"
-      echo "Redis: $(redis-cli --version)"
+      # Monitoring
+      prometheus
+      grafana
+    ])
+    ''
+      echo "🐍 Python: $(python --version)"
+      echo "🐳 Docker: $(docker --version)"
+      echo "☸️  Kubernetes: $(kubectl version --client --short 2>/dev/null || echo 'kubectl available')"
+      echo ""
+      echo "Available tools:"
+      echo "  • Python: pip, virtualenv, jupyter, pandas, numpy"
+      echo "  • DevOps: docker, kubectl, terraform, ansible"
+      echo "  • Databases: postgresql, sqlite, redis"
+      echo "  • Monitoring: prometheus, grafana"
     '';
-  };
 
-  # Data science shell
-  datascience = pkgs.mkShell {
-    name = "datascience";
-    buildInputs = with pkgs; [
-      # Python with data science packages
-      (python312.withPackages (ps: with ps;
-      # Core packages that work everywhere
-      [
-        numpy
-        pandas
-        scipy
-        scikit-learn
-        matplotlib
-        seaborn
-        plotly
-        jupyterlab
-        notebook
-        ipython
-        statsmodels
-        pytorch
-        xgboost
-        lightgbm
-      ] ++
-      # TensorFlow and Keras only on supported platforms
-      # (not on x86_64-darwin/Intel Macs)
-      (if (pkgs.stdenv.isLinux || pkgs.stdenv.isAarch64) then [
-        tensorflow
-        keras
-      ] else [ ])
-      ))
-
-      # R environment
-      R
-      # rstudio  # GUI app, platform-specific
-
-      # Julia - Linux-only
-      # julia
-
-      # Tools
-      quarto
-    ];
-
-    shellHook = ''
-      echo "Data Science Environment"
-      echo "Python with ML/DS packages loaded"
-      echo "R: $(R --version | head -n1)"
-      ${
-        if (pkgs.stdenv.isLinux || pkgs.stdenv.isAarch64) then
-          ''echo "TensorFlow and Keras: Available"''
-        else
-          ''echo "TensorFlow and Keras: Not available on x86_64-darwin (Intel Mac)"''
-      }
-    '';
-  };
-
-  # Mobile development shell
-  mobile = pkgs.mkShell {
-    name = "mobile-dev";
-    buildInputs = with pkgs; [
-      # React Native
-      nodejs_22
-      # nodePackages.react-native-cli # Deprecated, use npx react-native instead
-      # nodePackages.expo-cli # Use npx expo instead
-      watchman
-
-      # Flutter
+  # Security & mobile (consolidated)
+  mobile = mkSpecializedShell
+    "Mobile & Security"
+    "Mobile Development & Security Testing Environment"
+    (with pkgs; [
+      # Mobile development
       flutter
-
-      # Android
-      # android-studio # Large package, install separately if needed
       android-tools
 
-      # Tools
-      scrcpy
-      # cocoapods # macOS specific
-    ];
-
-    shellHook = ''
-      echo "Mobile Development Environment"
-      echo "React Native CLI available"
-      echo "Flutter: $(flutter --version | head -n1)"
-      export ANDROID_HOME="$HOME/Android/Sdk"
-      export PATH="$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools:$PATH"
-    '';
-  };
-
-  # Security testing shell
-  security = pkgs.mkShell {
-    name = "security";
-    buildInputs = with pkgs; [
-      # Network tools
+      # Security tools
       nmap
-      # masscan  # Linux-only (requires glibc)
-      # zmap  # Marked as broken in nixpkgs
-      netcat
-      socat
+      wireshark
       tcpdump
-      # wireshark  # GUI app, platform-specific
-
-      # Web security
-      # burpsuite  # GUI app, platform-specific
-      # zap  # GUI app, platform-specific
-      nikto
-      sqlmap
-      gobuster
-      ffuf
-      # wfuzz  # May have Linux dependencies
-
-      # Vulnerability scanners
-      # metasploit  # Linux-only (requires glibc)
-      nuclei
-      trivy
-      grype
-
-      # Password tools
-      hashcat
-      john
-      # hydra  # May have Linux dependencies
-
-      # Forensics
-      binwalk
-      # foremost  # Linux-only
-      # volatility3  # May have Linux dependencies
-
-      # Crypto
       openssl
       gnupg
-    ];
+      pass
 
-    shellHook = ''
-      echo "Security Testing Environment"
-      echo "⚠️  Use responsibly and only on systems you own or have permission to test"
-      echo "Nmap: $(nmap --version | head -n1)"
+      # Network analysis
+      netcat
+      socat
+      curl
+      wget
+    ] ++ lib.optionals (pkgs.stdenv.system == "x86_64-linux") [
+      # Platform-specific packages
+      android-studio
+    ])
+    ''
+      echo "📱 Flutter: $(flutter --version | head -1)"
+      echo "🔒 Security tools: nmap, wireshark, openssl, gnupg"
+      echo "📡 Network: netcat, socat, curl, wget"
+      echo ""
+      echo "Available environments:"
+      echo "  • Mobile: flutter, android-tools"
+      echo "  • Security: nmap, wireshark, tcpdump"
+      echo "  • Crypto: openssl, gnupg, pass"
     '';
-  };
 }

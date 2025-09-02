@@ -1,12 +1,13 @@
 # Development Module Index
-# Central import for all development modules
+# Development tools and language support
+# Provides comprehensive development environment setup
 
 { config, pkgs, lib, ... }:
 
 {
   imports = [
-    ./languages
-    ./tools.nix
+    ./languages # Programming language support
+    ./tools.nix # Development tools and utilities
   ];
 }
 

@@ -17,7 +17,15 @@
       "Bash(git commit:*)",
       "Bash(nix flake show:*)",
       "Bash(nix --extra-experimental-features 'nix-command flakes' flake show)",
-      "Bash(nix:*)"
+      "Bash(nix:*)",
+      "Bash(for dir in modules/hardware modules/core modules/security modules/development modules/development/languages modules/desktop modules/system modules/system/maintenance modules/system/performance modules/services/network modules/services modules/services/system)",
+      "Bash(do if [ -f \"$dir/default.nix\" ])",
+      "Bash(then echo \"EXISTS: $dir/default.nix\")",
+      "Bash(fi)",
+      "Bash(done)",
+      "Bash(for:*)",
+      "Bash(do echo \"=== $dir ===\")",
+      "Bash(diff:*)"
     ],
     "deny": [],
     "ask": []

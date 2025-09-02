@@ -6,8 +6,8 @@
 
 {
   imports = [
-    ./performance/index.nix # Performance optimizations
-    ./maintenance/index.nix # System maintenance
+    ./performance # Performance optimizations
+    ./maintenance # System maintenance
     ./optimization.nix # Compatibility layer for legacy configs
   ];
 

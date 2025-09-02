@@ -30,6 +30,37 @@ let
     createTestFile = machine: path: content: ''
       ${machine}.succeed("echo '${content}' > ${path}")
     '';
+
+    # Check if a process is running
+    checkProcess = machine: process: ''
+      ${machine}.succeed("pgrep -f '${process}'")
+    '';
+
+    # Verify file exists with specific content
+    verifyFileContent = machine: path: pattern: ''
+      ${machine}.succeed("grep -q '${pattern}' ${path}")
+    '';
+
+    # Test HTTP endpoint
+    testHttpEndpoint = machine: url: expectedStatus: ''
+      ${machine}.succeed("curl -s -o /dev/null -w '%{http_code}' ${url} | grep -q '${toString expectedStatus}'")
+    '';
+
+    # Wait for file to appear
+    waitForFile = machine: path: timeout: ''
+      ${machine}.wait_until_succeeds("test -f ${path}", timeout=${toString timeout})
+    '';
+
+    # Check systemd service status
+    checkServiceActive = machine: service: ''
+      ${machine}.succeed("systemctl is-active ${service}")
+    '';
+
+    # Verify directory permissions
+    checkPermissions = machine: path: expectedPerms: ''
+      actual_perms=$(${machine}.succeed("stat -c '%a' ${path}").strip())
+      assert actual_perms == "${expectedPerms}", f"Expected permissions ${expectedPerms}, got {actual_perms}"
+    '';
   };
 
   # Common test configuration

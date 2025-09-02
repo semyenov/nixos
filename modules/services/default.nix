@@ -1,14 +1,15 @@
 # Services Module Index
-# Central import for all service modules
+# Main index for all service modules
+# Imports both network and system services, plus standalone services
 
 { config, pkgs, lib, ... }:
 
 {
   imports = [
-    ./audio.nix
-    ./docker.nix
-    ./network
-    ./system
+    ./network # Network services (V2Ray, networking)
+    ./system # System services (backup, monitoring)
+    ./audio.nix # Audio services (PipeWire)
+    ./docker.nix # Docker containerization
   ];
 }
 

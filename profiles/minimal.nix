@@ -86,16 +86,13 @@
     power-profiles-daemon.enable = false;
   };
 
-  # Minimal packages only
-  environment.systemPackages = with pkgs; [
-    vim
-    git
-    curl
-    htop
-  ];
+  # Minimal packages (core packages already in host config: vim, git, curl, htop, wget)
+  # Only profile-specific additions here
+  environment.systemPackages = [ ];
 
   # Disable Docker
-  virtualisation.docker.enable = false;
+  # Docker disabled for minimal profile
+  services.docker.enable = false;
 
   # Memory optimizations
   boot.kernel.sysctl = {

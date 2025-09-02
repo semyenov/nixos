@@ -1,12 +1,13 @@
 # System Services Module Index
-# Imports all system-level service modules
+# System-level services for monitoring, backup, and maintenance
+# Critical for system health and data protection
 
 { config, pkgs, lib, ... }:
 
 {
   imports = [
-    ./backup.nix
-    ./monitoring.nix
+    ./backup.nix # Automated backup with BorgBackup
+    ./monitoring.nix # System monitoring with Prometheus/Grafana
   ];
 }
 
