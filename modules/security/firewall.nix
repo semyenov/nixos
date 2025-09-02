@@ -4,37 +4,40 @@ with lib;
 
 let
   cfg = config.networking.firewall;
+  centralConfig = import ../../lib/config.nix;
+  utils = import ../../lib/module-utils.nix { inherit lib; };
+  ports = centralConfig.network.ports;
 in
 {
-  # Firewall configuration
+  # Firewall configuration with centralized port definitions
   networking.firewall = {
     enable = true;
 
     # Allow specific TCP ports
     allowedTCPPorts = [
-      # 22 # SSH - commented out by default for security
-      80 # HTTP
-      443 # HTTPS
-    ] ++ optionals config.services.openssh.enable [ 22 ]
+      # ports.services.ssh # SSH - commented out by default for security
+      ports.services.http
+      ports.services.https
+    ] ++ optionals config.services.openssh.enable [ ports.services.ssh ]
     ++ optionals (config.environment.sessionVariables ? DEVELOPMENT) [
-      3000 # Development server
-      3001 # Development server 
-      4200 # Angular dev server
-      5173 # Vite dev server
-      8000 # Python dev server
-      8080 # Alternative HTTP
-      9000 # PHP dev server
+      ports.dev.default
+      (ports.dev.default + 1) # 3001
+      ports.dev.angular
+      ports.dev.vite
+      ports.dev.python
+      ports.dev.altHttp
+      ports.dev.php
     ];
 
     # Allow specific UDP ports
     allowedUDPPorts = [
-      51820 # WireGuard
+      ports.services.wireguard
     ];
 
     # Allow specific port ranges
     allowedTCPPortRanges = [
-      { from = 3000; to = 3010; } # Development servers
-      { from = 8000; to = 8010; } # Alternative servers
+      ports.dev.range # Development servers
+      ports.dev.altRange # Alternative servers
     ];
 
     # Reject instead of drop
@@ -49,45 +52,55 @@ in
     extraCommands = ''
       # Allow Docker networks only if Docker is enabled
       ${optionalString config.virtualisation.docker.enable ''
-        iptables -A INPUT -s 172.16.0.0/12 -j ACCEPT
-        iptables -A INPUT -s 172.17.0.0/16 -j ACCEPT
+        iptables -A INPUT -s ${centralConfig.network.docker.subnet} -j ACCEPT
+        iptables -A INPUT -s ${centralConfig.network.docker.bridge} -j ACCEPT
       ''}
       
       # Enhanced rate limiting for SSH
-      ${optionalString config.services.openssh.enable ''
-        iptables -A INPUT -p tcp --dport 22 -m state --state NEW -m recent --set --name SSH --rsource
-        iptables -A INPUT -p tcp --dport 22 -m state --state NEW -m recent --update --seconds 60 --hitcount 4 --name SSH --rsource -j DROP
-        iptables -A INPUT -p tcp --dport 22 -m state --state NEW -m recent --update --seconds 300 --hitcount 10 --name SSH --rsource -j DROP
-      ''}
+      ${optionalString config.services.openssh.enable (
+        let 
+          sshLimit = centralConfig.security.rateLimit.ssh;
+        in ''
+          iptables -A INPUT -p tcp --dport ${toString ports.services.ssh} -m state --state NEW -m recent --set --name SSH --rsource
+          iptables -A INPUT -p tcp --dport ${toString ports.services.ssh} -m state --state NEW -m recent --update --seconds ${toString sshLimit.seconds} --hitcount ${toString sshLimit.hitcount} --name SSH --rsource -j DROP
+          iptables -A INPUT -p tcp --dport ${toString ports.services.ssh} -m state --state NEW -m recent --update --seconds ${toString sshLimit.longSeconds} --hitcount ${toString sshLimit.longHitcount} --name SSH --rsource -j DROP
+        '')}
       
       # SYN flood protection
-      iptables -N syn_flood
-      iptables -A INPUT -p tcp --syn -j syn_flood
-      iptables -A syn_flood -m limit --limit 1/s --limit-burst 3 -j RETURN
-      iptables -A syn_flood -j DROP
+      ${let synFlood = centralConfig.security.rateLimit.synFlood; in ''
+        iptables -N syn_flood
+        iptables -A INPUT -p tcp --syn -j syn_flood
+        iptables -A syn_flood -m limit --limit ${synFlood.limit} --limit-burst ${toString synFlood.burst} -j RETURN
+        iptables -A syn_flood -j DROP
+      ''}
       
       # Invalid packets
       iptables -A INPUT -m conntrack --ctstate INVALID -j DROP
       
       # Port scan detection and blocking
-      iptables -N port_scanning
-      iptables -A port_scanning -p tcp --tcp-flags SYN,ACK,FIN,RST RST -m limit --limit 1/s --limit-burst 2 -j RETURN
-      iptables -A port_scanning -j DROP
+      ${let portScan = centralConfig.security.rateLimit.portScan; in ''
+        iptables -N port_scanning
+        iptables -A port_scanning -p tcp --tcp-flags SYN,ACK,FIN,RST RST -m limit --limit ${portScan.limit} --limit-burst ${toString portScan.burst} -j RETURN
+        iptables -A port_scanning -j DROP
+      ''}
     '';
 
     extraStopCommands = ''
       # Clean up Docker rules
       ${optionalString config.virtualisation.docker.enable ''
-        iptables -D INPUT -s 172.16.0.0/12 -j ACCEPT 2>/dev/null || true
-        iptables -D INPUT -s 172.17.0.0/16 -j ACCEPT 2>/dev/null || true
+        iptables -D INPUT -s ${centralConfig.network.docker.subnet} -j ACCEPT 2>/dev/null || true
+        iptables -D INPUT -s ${centralConfig.network.docker.bridge} -j ACCEPT 2>/dev/null || true
       ''}
       
       # Clean up SSH rate limiting
-      ${optionalString config.services.openssh.enable ''
-        iptables -D INPUT -p tcp --dport 22 -m state --state NEW -m recent --set --name SSH --rsource 2>/dev/null || true
-        iptables -D INPUT -p tcp --dport 22 -m state --state NEW -m recent --update --seconds 60 --hitcount 4 --name SSH --rsource -j DROP 2>/dev/null || true
-        iptables -D INPUT -p tcp --dport 22 -m state --state NEW -m recent --update --seconds 300 --hitcount 10 --name SSH --rsource -j DROP 2>/dev/null || true
-      ''}
+      ${optionalString config.services.openssh.enable (
+        let 
+          sshLimit = centralConfig.security.rateLimit.ssh;
+        in ''
+          iptables -D INPUT -p tcp --dport ${toString ports.services.ssh} -m state --state NEW -m recent --set --name SSH --rsource 2>/dev/null || true
+          iptables -D INPUT -p tcp --dport ${toString ports.services.ssh} -m state --state NEW -m recent --update --seconds ${toString sshLimit.seconds} --hitcount ${toString sshLimit.hitcount} --name SSH --rsource -j DROP 2>/dev/null || true
+          iptables -D INPUT -p tcp --dport ${toString ports.services.ssh} -m state --state NEW -m recent --update --seconds ${toString sshLimit.longSeconds} --hitcount ${toString sshLimit.longHitcount} --name SSH --rsource -j DROP 2>/dev/null || true
+        '')}
       
       # Clean up custom chains
       iptables -F syn_flood 2>/dev/null || true
@@ -103,32 +116,26 @@ in
   services.fail2ban = {
     enable = true;
 
-    maxretry = 3;
-    bantime = "1h";
+    maxretry = centralConfig.security.fail2ban.maxRetry;
+    bantime = centralConfig.security.fail2ban.banTime;
     bantime-increment = {
       enable = true;
-      factor = "2";
-      maxtime = "168h"; # 1 week
+      factor = centralConfig.security.fail2ban.banFactor;
+      maxtime = centralConfig.security.fail2ban.maxBanTime;
     };
 
-    ignoreIP = [
-      "127.0.0.0/8"
-      "::1"
-      "192.168.0.0/16"
-      "10.0.0.0/8"
-      "172.16.0.0/12"
-    ];
+    ignoreIP = centralConfig.network.privateRanges;
 
     jails = {
       # SSH jail is enabled by default with fail2ban
       # We can override settings if needed
       sshd.settings = {
         enabled = true;
-        port = 22;
+        port = ports.services.ssh;
         filter = "sshd";
-        maxretry = 3;
-        findtime = 600;
-        bantime = 3600;
+        maxretry = centralConfig.security.fail2ban.maxRetry;
+        findtime = centralConfig.security.fail2ban.findTime;
+        bantime = 3600; # 1 hour for SSH specifically
       };
     };
   };

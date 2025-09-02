@@ -4,48 +4,61 @@ with lib;
 
 let
   cfg = config.services.backup;
+  centralConfig = import ../../lib/config.nix;
+  utils = import ../../lib/module-utils.nix { inherit lib; };
+  backupConfig = centralConfig.backup;
 in
 {
   options.services.backup = {
-    enable = mkEnableOption "automatic backup service";
+    enable = utils.mkServiceEnableOption "backup" "automatic system backup using BorgBackup";
 
-    repository = mkOption {
-      type = types.str;
-      default = "/var/backup/nixos";
-      description = "Backup repository location";
+    repository = utils.mkPathOption {
+      default = backupConfig.defaultRepository;
+      description = ''
+        Location of the backup repository.
+        Can be a local path or a remote repository.
+      '';
+      example = "/mnt/backup/nixos";
     };
 
-    paths = mkOption {
-      type = types.listOf types.str;
-      default = [
-        "/home"
-        "/etc/nixos"
-        "/var/lib"
-      ];
-      description = "Paths to backup";
+    paths = utils.mkStringListOption {
+      default = backupConfig.defaultPaths;
+      description = ''
+        List of paths to include in the backup.
+        These paths will be backed up recursively.
+      '';
+      example = [ "/home" "/etc" "/var/lib" ];
     };
 
-    exclude = mkOption {
-      type = types.listOf types.str;
-      default = [
-        "/home/*/.cache"
-        "/home/*/.local/share/Trash"
-        "/home/*/Downloads"
-        "*.tmp"
-        "node_modules"
-        ".git"
-      ];
-      description = "Patterns to exclude from backup";
+    exclude = utils.mkStringListOption {
+      default = backupConfig.defaultExcludes;
+      description = ''
+        Patterns to exclude from backup.
+        Uses BorgBackup pattern matching syntax.
+      '';
+      example = [ "*.cache" "*/tmp/*" "node_modules" ];
     };
 
-    schedule = mkOption {
-      type = types.str;
-      default = "daily";
-      description = "Backup schedule (systemd timer format)";
+    schedule = utils.mkScheduleOption {
+      default = backupConfig.defaultSchedule;
+      description = ''
+        Backup schedule in systemd timer format.
+        Common values: "daily", "weekly", "monthly", or custom like "*-*-* 02:00:00"
+      '';
     };
   };
 
   config = mkIf cfg.enable {
+    # Assertions for backup configuration
+    assertions = [
+      (utils.mkAssertion
+        (cfg.repository != "")
+        "Backup repository path cannot be empty")
+      (utils.mkAssertion
+        (length cfg.paths > 0)
+        "At least one path must be specified for backup")
+    ];
+
     # BorgBackup configuration
     services.borgbackup.jobs."system-backup" = {
       paths = cfg.paths;
@@ -62,9 +75,9 @@ in
 
       # Simple retention policy
       prune.keep = {
-        daily = 7;
-        weekly = 4;
-        monthly = 6;
+        daily = backupConfig.retention.keepDaily;
+        weekly = backupConfig.retention.keepWeekly;
+        monthly = backupConfig.retention.keepMonthly;
       };
     };
 
