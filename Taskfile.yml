@@ -260,27 +260,57 @@ tasks:
   shell:
     desc: "Enter default development shell"
     cmds:
-      - nix develop
+      - nix --extra-experimental-features 'nix-command flakes' develop
 
   shell:typescript:
     desc: "Enter TypeScript development shell"
     cmds:
-      - nix develop .#typescript
+      - nix --extra-experimental-features 'nix-command flakes' develop '.#typescript'
 
   shell:python:
     desc: "Enter Python development shell"
     cmds:
-      - nix develop .#python
+      - nix --extra-experimental-features 'nix-command flakes' develop '.#python'
 
   shell:rust:
     desc: "Enter Rust development shell"
     cmds:
-      - nix develop .#rust
+      - nix --extra-experimental-features 'nix-command flakes' develop '.#rust'
 
   shell:go:
     desc: "Enter Go development shell"
     cmds:
-      - nix develop .#go
+      - nix --extra-experimental-features 'nix-command flakes' develop '.#go'
+
+  shell:cpp:
+    desc: "Enter C/C++ development shell"
+    cmds:
+      - nix --extra-experimental-features 'nix-command flakes' develop '.#cpp'
+
+  shell:database:
+    desc: "Enter Database development shell"
+    cmds:
+      - nix --extra-experimental-features 'nix-command flakes' develop '.#database'
+
+  shell:datascience:
+    desc: "Enter Data Science development shell"
+    cmds:
+      - nix --extra-experimental-features 'nix-command flakes' develop '.#datascience'
+
+  shell:devops:
+    desc: "Enter DevOps development shell"
+    cmds:
+      - nix --extra-experimental-features 'nix-command flakes' develop '.#devops'
+
+  shell:mobile:
+    desc: "Enter Mobile development shell"
+    cmds:
+      - nix --extra-experimental-features 'nix-command flakes' develop '.#mobile'
+
+  shell:security:
+    desc: "Enter Security testing shell"
+    cmds:
+      - nix --extra-experimental-features 'nix-command flakes' develop '.#security'
 
   # ========================
   # Quick Aliases
