@@ -4,233 +4,128 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is a modular NixOS system configuration using Flakes and Home Manager. The configuration manages a desktop system with NVIDIA RTX 4060 graphics, GNOME desktop environment, comprehensive development tools, and security hardening.
+NixOS system configuration using Flakes and Home Manager. Modular architecture with NVIDIA graphics support, GNOME desktop, and comprehensive development environment.
 
-## Directory Structure
+## Commands
 
-```
-.
-├── flake.nix                 # Main flake configuration
-├── flake.lock               # Locked dependencies
-├── hardware-configuration.nix # Auto-generated hardware config
-├── configuration.nix         # Legacy configuration (for reference)
-├── hosts/
-│   └── nixos/
-│       └── configuration.nix # Host-specific configuration
-├── modules/
-│   ├── core/
-│   │   ├── boot.nix        # Boot and kernel configuration
-│   │   └── nix.nix         # Nix settings and optimization
-│   ├── hardware/
-│   │   └── nvidia.nix      # NVIDIA GPU configuration
-│   ├── desktop/
-│   │   └── gnome.nix       # GNOME desktop environment
-│   ├── services/
-│   │   ├── audio.nix       # PipeWire audio configuration
-│   │   ├── docker.nix      # Docker and container tools
-│   │   └── networking.nix  # Network configuration
-│   ├── development/
-│   │   ├── typescript.nix  # TypeScript/JavaScript tools
-│   │   └── tools.nix       # General development tools
-│   ├── security/
-│   │   ├── firewall.nix    # Firewall and fail2ban
-│   │   └── sops.nix        # Secrets management
-│   └── system/
-│       └── optimization.nix # System performance tuning
-├── users/
-│   └── semyenov/
-│       └── home.nix        # User-specific Home Manager config
-└── secrets/
-    └── README.md           # Secrets management guide
-```
-
-## Common Commands
-
-### System Management with Flakes
+### System Management
 ```bash
-# Build and switch to new configuration (from this directory)
+# Build and switch configuration (from repository root)
 sudo nixos-rebuild switch --flake .#nixos
 
-# Test configuration without switching
+# Test without switching
 sudo nixos-rebuild test --flake .#nixos
 
-# Build configuration without switching
-sudo nixos-rebuild build --flake .#nixos
+# Show detailed errors
+sudo nixos-rebuild switch --flake .#nixos --show-trace
 
-# Update flake inputs (nixpkgs, home-manager, etc.)
+# Rollback
+sudo nixos-rebuild switch --rollback
+
+# Update flake inputs
 nix flake update
 
-# Update specific input
-nix flake lock --update-input nixpkgs
-
-# Show flake info
-nix flake show
-
-# Check flake
+# Check flake validity
 nix flake check
-
-# Enter development shell
-nix develop
-
-# Rollback to previous generation
-sudo nixos-rebuild switch --rollback
 ```
 
-### Home Manager
+### Quick Commands (Shell Aliases)
 ```bash
-# Switch to new home configuration (if using standalone)
-home-manager switch --flake .#semyenov
-
-# Show generations
-home-manager generations
-
-# Remove old generations
-home-manager expire-generations "-7 days"
+rebuild  # sudo nixos-rebuild switch --flake ~/Projects#nixos
+update   # nix flake update  
+clean    # sudo nix-collect-garbage -d
 ```
 
-### Garbage Collection
+### Development
+
+#### TypeScript/JavaScript
 ```bash
-# Remove old generations and garbage collect
-sudo nix-collect-garbage -d
+# Package managers (in order of speed)
+bun install       # Fastest
+pnpm install      # Efficient disk usage
+yarn install      # Classic alternative
+npm install       # Standard
 
-# Remove generations older than 7 days
-sudo nix-collect-garbage --delete-older-than 7d
+# Direct execution
+bun run script.ts
+deno run script.ts
+npx tsx script.ts
 
-# Optimize nix store
-nix store optimise
+# Compilation
+tsc              # Compile TypeScript
+tsc --watch      # Watch mode
+
+# Linting/Formatting
+eslint .
+prettier --write .
+biome check .
 ```
+
+#### Docker
+```bash
+docker ps -a
+docker-compose up -d
+docker system prune -a
+lazydocker        # TUI management
+```
+
+### Scripts Available
+```bash
+./apply-config.sh      # Interactive configuration switch
+./fix-and-switch.sh    # Auto-fix common issues and switch
+./complete-setup.sh    # Initial setup helper
+```
+
+## Architecture
+
+### Module Organization
+```
+flake.nix                    # Entry point, imports all modules
+├── hosts/nixos/             # Host-specific config (locale, users)
+├── modules/
+│   ├── core/               # Boot, kernel, Nix settings
+│   ├── hardware/           # NVIDIA drivers
+│   ├── desktop/            # GNOME environment
+│   ├── services/           # Network, audio, Docker
+│   ├── development/        # TypeScript, dev tools
+│   ├── security/           # Firewall, SOPS secrets
+│   └── system/             # Performance optimizations
+└── users/semyenov/         # Home Manager user config
+```
+
+### Key Configuration Points
+
+- **Flake Inputs**: nixpkgs (25.05), home-manager (25.05), sops-nix
+- **State Version**: 25.05 (DO NOT change without migration)
+- **User**: semyenov with sudo, docker, network access
+- **Shell**: ZSH with Starship prompt
+- **Development**: Node.js 22, TypeScript, Bun, Deno, multiple package managers
+- **Security**: Firewall enabled, fail2ban, SOPS for secrets
+
+### Adding/Modifying Configuration
+
+1. **System packages**: Add to `hosts/nixos/configuration.nix`
+2. **User packages**: Add to `users/semyenov/home.nix`  
+3. **New module**: Create in `modules/`, add to `flake.nix` imports
+4. **Test first**: Always run `nixos-rebuild test` before switch
 
 ### Secrets Management (SOPS)
+
 ```bash
-# Generate age key
+# Setup
 age-keygen -o ~/.config/sops/age/keys.txt
 
-# Create new secrets file
+# Edit secrets
 sops secrets/my-secret.yaml
 
-# Edit existing secrets
-sops secrets/my-secret.yaml
-
-# Convert SSH key to age
-ssh-to-age < ~/.ssh/id_ed25519.pub
+# Access in config: config.sops.secrets.my_secret.path
 ```
-
-### TypeScript Development
-```bash
-# Package managers
-npm install        # Install dependencies with npm
-pnpm install      # Install with pnpm (faster, more efficient)
-yarn install      # Install with yarn
-bun install       # Install with bun (fastest)
-
-# Run TypeScript directly
-bun run script.ts # Execute TypeScript with bun
-deno run script.ts # Execute with deno
-npx tsx script.ts # Execute with tsx (via npx)
-
-# TypeScript compilation
-tsc               # Compile TypeScript files
-tsc --watch       # Watch mode for continuous compilation
-
-# Linting and formatting
-eslint .          # Lint the codebase
-prettier --write . # Format code with prettier
-```
-
-### Docker Commands
-```bash
-# Docker service management
-sudo systemctl status docker    # Check Docker service status
-sudo systemctl restart docker   # Restart Docker service
-
-# Common Docker operations
-docker ps                       # List running containers
-docker ps -a                    # List all containers
-docker images                   # List images
-docker-compose up -d            # Start services in background
-docker-compose down             # Stop and remove containers
-docker system prune -a          # Clean up unused resources
-
-# Lazydocker for TUI management
-lazydocker
-```
-
-### Git Workflow
-```bash
-# Lazygit for TUI git management
-lazygit
-
-# Common git aliases (defined in home.nix)
-gs  # git status
-gc  # git commit
-gp  # git push
-gl  # git pull
-gd  # git diff
-ga  # git add
-```
-
-## Architecture Notes
-
-### Modular Configuration
-- Configuration is split into focused modules for better organization
-- Each module handles a specific aspect of the system
-- Modules can be easily enabled/disabled in flake.nix
-- Host-specific configuration in `hosts/nixos/`
-- User-specific configuration managed by Home Manager
-
-### Key Features
-- **Flakes**: Reproducible builds with locked dependencies
-- **Home Manager**: Declarative user environment management
-- **SOPS-nix**: Encrypted secrets management
-- **Security Hardening**: Firewall, fail2ban, kernel hardening
-- **Performance Optimization**: ZRAM, tmpfs, I/O scheduling, CPU governance
-- **Development Environment**: Complete TypeScript/JavaScript toolchain with multiple runtimes
-
-### Important Settings
-- System state version: 25.05 (DO NOT change unless following migration guide)
-- Nix flakes and nix-command are enabled as experimental features
-- Automatic garbage collection runs weekly
-- Automatic store optimization runs weekly
-- Firewall is enabled with specific ports for development
-- Docker uses overlay2 storage driver with automatic pruning
-
-## Development Notes
-
-### Working with the Configuration
-1. Always test changes with `sudo nixos-rebuild test --flake .#nixos` before switching
-2. Keep hardware-configuration.nix untouched (regenerate with `nixos-generate-config` if hardware changes)
-3. User-specific packages should go in `users/semyenov/home.nix`
-4. System-wide packages should be minimal (most go to Home Manager)
-5. Use SOPS for any sensitive configuration (API keys, passwords, tokens)
-
-### Adding New Modules
-1. Create a new `.nix` file in the appropriate `modules/` subdirectory
-2. Add the module to the imports list in `flake.nix`
-3. Test the configuration before switching
 
 ### Troubleshooting
-- Check system logs: `journalctl -xe`
-- Check Nix build logs: `nixos-rebuild build --flake .#nixos --show-trace`
-- Check Home Manager: `home-manager switch --flake .#semyenov --show-trace`
-- List generations: `sudo nix-env --list-generations --profile /nix/var/nix/profiles/system`
 
-## Shell Aliases and Shortcuts
-
-The configuration includes many useful aliases:
-- `rebuild`: Rebuild NixOS configuration
-- `update`: Update flake inputs
-- `clean`: Run garbage collection
-- `ll`, `la`, `lt`: Enhanced ls commands with eza
-- `v`: Open neovim
-- `c`: Open VS Code
-- `d`: Docker shortcut
-- `dc`: Docker-compose shortcut
-
-## Security Considerations
-
-1. Firewall is enabled with minimal open ports
-2. SSH is hardened (no root login, key-only authentication)
-3. Fail2ban protects against brute force attacks
-4. Kernel parameters are hardened for security
-5. SOPS manages secrets encryption
-6. Automatic security updates can be enabled if desired
+```bash
+journalctl -xe                                    # System logs
+nixos-rebuild build --flake .#nixos --show-trace # Build errors
+home-manager switch --flake .#semyenov --show-trace # Home Manager errors
+nix-env --list-generations --profile /nix/var/nix/profiles/system # List generations
+```

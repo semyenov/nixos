@@ -55,6 +55,7 @@
             ./modules/services/networking.nix
             ./modules/services/audio.nix
             ./modules/services/docker.nix
+            ./modules/services/v2ray.nix
             ./modules/development/typescript.nix
             ./modules/development/tools.nix
             ./modules/security/firewall.nix
