@@ -140,40 +140,23 @@ in
     fail2ban
   ];
 
-  # Enhanced kernel hardening
+  # Network-specific hardening (non-overlapping with hardening.nix)
   boot.kernel.sysctl = {
-    # Core dumps
-    "fs.suid_dumpable" = 0;
-
-    # Address space layout randomization
-    "kernel.randomize_va_space" = 2;
-
     # Network hardening
-    "net.ipv4.conf.all.rp_filter" = 1;
-    "net.ipv4.conf.default.rp_filter" = 1;
-    "net.ipv4.conf.all.accept_source_route" = 0;
-    "net.ipv4.conf.default.accept_source_route" = 0;
-    "net.ipv4.icmp_echo_ignore_broadcasts" = 1;
-    "net.ipv4.icmp_ignore_bogus_error_responses" = 1;
-    "net.ipv4.tcp_syncookies" = 1;
-    "net.ipv4.conf.all.log_martians" = 1;
-    "net.ipv4.conf.default.log_martians" = 1;
-    "net.ipv4.conf.all.accept_redirects" = 0;
-    "net.ipv4.conf.default.accept_redirects" = 0;
-    "net.ipv6.conf.all.accept_redirects" = 0;
-    "net.ipv6.conf.default.accept_redirects" = 0;
-
-    # Kernel hardening
-    "kernel.unprivileged_bpf_disabled" = 1;
-    "kernel.unprivileged_userns_clone" = mkDefault 0; # May break some containers
-    "kernel.kptr_restrict" = 2;
-    "kernel.yama.ptrace_scope" = 1;
-    "kernel.panic" = 10; # Reboot after 10 seconds on kernel panic
-    "kernel.panic_on_oops" = 1; # Panic on oops
-    "kernel.modules_disabled" = mkDefault 0; # Set to 1 to disable module loading after boot
-
-    # File system hardening
-    "fs.protected_hardlinks" = 1;
-    "fs.protected_symlinks" = 1;
+    "net.ipv4.conf.all.rp_filter" = mkDefault 1;
+    "net.ipv4.conf.default.rp_filter" = mkDefault 1;
+    "net.ipv4.conf.all.accept_source_route" = mkDefault 0;
+    "net.ipv4.conf.default.accept_source_route" = mkDefault 0;
+    "net.ipv4.icmp_echo_ignore_broadcasts" = mkDefault 1;
+    "net.ipv4.icmp_ignore_bogus_error_responses" = mkDefault 1;
+    "net.ipv4.conf.all.log_martians" = mkDefault 1;
+    "net.ipv4.conf.default.log_martians" = mkDefault 1;
+    "net.ipv4.conf.all.accept_redirects" = mkDefault 0;
+    "net.ipv4.conf.default.accept_redirects" = mkDefault 0;
+    "net.ipv6.conf.all.accept_redirects" = mkDefault 0;
+    "net.ipv6.conf.default.accept_redirects" = mkDefault 0;
   };
+
+  # Note: General kernel hardening is now handled by modules/security/hardening.nix
+  # Enable it with: security.hardening.enable = true;
 }
