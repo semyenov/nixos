@@ -54,7 +54,7 @@
       echo "  • Task: task (run 'task --list-all' for commands)"
       echo "  • Secrets: sops, age"
       echo "  • Git: git, gh"
-      echo "  • Utils: jq, yq, ripgrep, fd, bat, eza"
+      echo "  • Utils: jq, yq, ripgrep (rg), fd, bat, eza"
       echo ""
       echo "🔧 Quick commands:"
       echo "  task test       - Run all tests"
@@ -65,16 +65,18 @@
       echo "📝 Project: $(pwd)"
       echo "🌿 Git branch: $(git branch --show-current 2>/dev/null || echo 'not in git repo')"
       
-      # Set up useful aliases for this session
+      # Set up useful aliases that don't override standard commands
       alias ll="eza -la --icons"
-      alias cat="bat"
-      alias find="fd"
-      alias grep="rg"
+      alias la="eza -a --icons"
+      alias lt="eza --tree --icons"
       
-      # Ensure task completion is available
-      if command -v task &> /dev/null; then
-        eval "$(task --completion bash 2>/dev/null || true)"
-      fi
+      # Suggest using the modern tools without forcing them
+      echo ""
+      echo "💡 Modern CLI tools available:"
+      echo "  • 'eza' for better ls (alias: ll, la, lt)"
+      echo "  • 'bat' for syntax-highlighted cat"
+      echo "  • 'fd' for faster find"
+      echo "  • 'rg' for faster grep (ripgrep)"
     '';
   };
 
