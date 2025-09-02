@@ -8,85 +8,110 @@ NixOS system configuration using Flakes and Home Manager. Modular architecture w
 
 ## Commands
 
-### System Management
+### Unified Management Script (`nix.sh`)
+
+All primary operations are handled through the unified `nix.sh` script:
+
 ```bash
-# Build and switch configuration (from repository root)
-sudo nixos-rebuild switch --flake .#nixos
+# Quick rebuild (default command)
+./nix.sh
 
-# Test without switching
-sudo nixos-rebuild test --flake .#nixos
+# Full system setup wizard
+./nix.sh setup
 
-# Show detailed errors
-sudo nixos-rebuild switch --flake .#nixos --show-trace
+# Test configuration
+./nix.sh test
 
-# Rollback
-sudo nixos-rebuild switch --rollback
+# Update flake inputs
+./nix.sh update
 
-# Check system version
-nixos-version
+# Clean old generations
+./nix.sh clean
 
-# List system generations
-nix-env --list-generations --profile /nix/var/nix/profiles/system
+# Rollback to previous generation
+./nix.sh rollback
+
+# Setup SOPS encryption
+./nix.sh sops
+
+# Show help
+./nix.sh help
+
+# Command-specific help
+./nix.sh rebuild --help
 ```
 
-### Flake Operations
+### Rebuild Operations
+
 ```bash
-# Update all flake inputs
-nix flake update
+# Quick rebuild with auto-staging
+./nix.sh rebuild
 
-# Update specific input
-nix flake lock --update-input nixpkgs
+# Test configuration without switching
+./nix.sh rebuild test
 
-# Check flake validity
-nix flake check
+# Update and rebuild
+./nix.sh rebuild -u
 
-# Show flake structure
-nix flake show
+# Dry run (preview changes)
+./nix.sh rebuild -n
 
-# Show flake metadata
-nix flake metadata
+# Verbose output with trace
+./nix.sh rebuild -v
+
+# Build for boot only
+./nix.sh rebuild boot
 ```
 
-### Home Manager
+### Setup Workflow
+
 ```bash
-# Switch user configuration
-home-manager switch --flake .#semyenov
+# Interactive setup for new system
+./nix.sh setup
 
-# Debug Home Manager issues
-home-manager switch --flake .#semyenov --show-trace
+# Quick setup (auto-yes to all)
+./nix.sh setup -q
 
-# Note: Home Manager creates .backup files when configs conflict
-```
+# Only SOPS setup
+./nix.sh setup --skip-hardware --skip-test --skip-build
 
-### Development Shell
-```bash
-# Enter development shell
-nix develop
-
-# Run command in dev shell
-nix develop --command zsh
-```
-
-### Quick Commands (Shell Aliases)
-```bash
-rebuild  # sudo nixos-rebuild switch --flake ~/Projects#nixos
-update   # nix flake update  
-clean    # sudo nix-collect-garbage -d
+# Only hardware configuration
+./nix.sh setup --skip-sops --skip-test --skip-build
 ```
 
 ### Testing & Validation
+
 ```bash
-# Run configuration tests
-./test-config.sh
+# Run all tests
+./nix.sh test
 
-# Test build without switching
-sudo nixos-rebuild test --flake .#nixos
+# Run specific tests
+./nix.sh test syntax flake
 
-# Check configuration syntax
-nix flake check
+# Quick validation with fail-fast
+./nix.sh test -f
+
+# Generate JSON report
+./nix.sh test --format json > report.json
+
+# Available tests: syntax, flake, build, modules, secrets, hardware, security
+```
+
+### V2Ray Configuration
+
+```bash
+# Configure V2Ray from VLESS URL
+./configure-v2ray.sh 'vless://UUID@server:port?pbk=...&sid=...'
+
+# Dry run to preview
+./configure-v2ray.sh -n 'vless://...'
+
+# Force overwrite existing
+./configure-v2ray.sh -f 'vless://...'
 ```
 
 ### Development Shells
+
 ```bash
 # Enter specific development environment
 nix develop .#typescript  # TypeScript/JavaScript
@@ -99,187 +124,231 @@ nix develop .#database    # Database tools
 nix develop .#datascience # Data Science
 nix develop .#mobile      # Mobile development
 nix develop .#security    # Security testing
+
+# Default development shell
+nix develop
 ```
 
-### Development
+### Manual Commands (Fallback)
 
-#### TypeScript/JavaScript
 ```bash
-# Package managers (in order of speed)
-bun install       # Fastest
-pnpm install      # Efficient disk usage
-yarn install      # Classic alternative
-npm install       # Standard
+# Direct nixos-rebuild
+sudo nixos-rebuild switch --flake .#nixos
 
-# Direct execution
-bun run script.ts
-deno run script.ts
-npx tsx script.ts
+# Flake operations
+nix flake update
+nix flake check
+nix flake show
+nix flake metadata
 
-# Compilation
-tsc              # Compile TypeScript
-tsc --watch      # Watch mode
+# Home Manager
+home-manager switch --flake .#semyenov
 
-# Linting/Formatting
-eslint .
-prettier --write .
-biome check .
-```
-
-#### Docker
-```bash
-docker ps -a
-docker-compose up -d
-docker system prune -a
-lazydocker        # TUI management
+# System info
+nixos-version
+nix-env --list-generations --profile /nix/var/nix/profiles/system
 ```
 
 ## Architecture
 
 ### Module Organization
+
+The configuration follows a strict modular architecture:
+
 ```
-flake.nix                    # Entry point, imports all modules, defines dev shell
+flake.nix                    # Entry point, defines nixosConfigurations and devShells
 ├── hosts/nixos/             
-│   ├── configuration.nix    # Host-specific config (locale, users, system packages)
+│   ├── configuration.nix    # Host-specific: locale, users, system packages
 │   └── hardware-configuration.nix  # Generated hardware config (not in git)
 ├── modules/
-│   ├── core/               # Boot, kernel, Nix settings
-│   ├── hardware/           
-│   │   ├── nvidia.nix      # NVIDIA drivers configuration
-│   │   └── auto-detect.nix # Hardware auto-detection
+│   ├── core/               # Boot, kernel, Nix settings (loaded first)
+│   ├── hardware/           # NVIDIA drivers, auto-detection
 │   ├── desktop/            # GNOME environment
-│   ├── services/           
-│   │   ├── networking.nix  # Network configuration
-│   │   ├── audio.nix       # PipeWire audio
-│   │   ├── docker.nix      # Container services
-│   │   ├── v2ray.nix       # V2Ray proxy
-│   │   ├── v2ray-sops.nix  # V2Ray secrets
-│   │   ├── backup.nix      # Backup system (borg/restic)
-│   │   └── monitoring.nix  # System monitoring
-│   ├── development/        # TypeScript, dev tools
-│   ├── security/           # Firewall, SOPS secrets
+│   ├── services/           # System services
+│   ├── development/        # Dev tools and languages
+│   ├── security/           # Firewall, SOPS
 │   └── system/             # Performance optimizations
-├── users/semyenov/         # Home Manager user config (packages, dotfiles)
-├── scripts/                # Helper scripts
-│   ├── setup-sops.sh       # SOPS key setup
-│   └── ...
-├── shells.nix              # Development shells
+├── users/semyenov/         # Home Manager user configuration
 ├── secrets/                # SOPS-encrypted secrets
-│   ├── README.md           # Secrets documentation
-│   └── v2ray.yaml.example  # V2Ray config template
-└── test-config.sh          # Configuration validation
+└── scripts/lib/common.sh   # Shared bash library
 ```
+
+### Module Loading Order
+
+1. **Core modules** (`core/nix.nix`, `core/boot.nix`) - Base system configuration
+2. **Hardware modules** - Hardware detection and drivers
+3. **Service modules** - System services (networking must load before dependent services)
+4. **Desktop modules** - Desktop environment
+5. **Development modules** - Development tools
+6. **User configuration** - Home Manager (loads last)
 
 ### Key Configuration Points
 
-- **Flake Inputs**: nixpkgs (25.05), home-manager (25.05), sops-nix
+- **Flake Inputs**: nixpkgs (25.05), home-manager (25.05), sops-nix, nixos-hardware
 - **State Version**: 25.05 (DO NOT change without migration)
 - **User**: semyenov with sudo, docker, network access
 - **Shell**: ZSH with Starship prompt
 - **Development**: Node.js 22, TypeScript, Bun, Deno, multiple package managers
-- **Security**: Firewall enabled, fail2ban, SOPS for secrets
-- **V2Ray**: VLESS Reality proxy (disabled by default, needs secrets)
 
-### First-Time Setup
+### Service Dependencies
 
-**Automated Setup** (Recommended):
-```bash
-# Interactive setup wizard
-./setup.sh
+- `v2ray-sops.nix` requires `sops.nix` to be loaded
+- `backup.nix` requires valid paths and services to backup
+- `monitoring.nix` depends on network configuration
+- V2Ray service is disabled by default (enable with `services.v2ray.enable = true;`)
 
-# Quick setup (runs all steps)
-./setup.sh quick
+## First-Time Setup
 
-# Individual steps
-./setup.sh hardware  # Generate hardware configuration
-./setup.sh sops      # Setup SOPS encryption
-./setup.sh v2ray     # Configure V2Ray secrets
-./setup.sh test      # Test configuration
-./setup.sh apply     # Apply configuration
-```
+### Prerequisites
 
-**Manual Setup**:
 1. **Generate hardware configuration**:
    ```bash
    sudo nixos-generate-config --dir hosts/nixos/
    ```
 
-2. **Setup SOPS encryption** (for secrets):
+2. **Setup SOPS encryption**:
    ```bash
-   # Generate age key
-   age-keygen -o ~/.config/sops/age/keys.txt
-   
-   # Get host key for .sops.yaml
-   ssh-to-age < /etc/ssh/ssh_host_ed25519_key.pub
-   
-   # Update .sops.yaml with your keys
+   ./nix.sh sops
    ```
 
-3. **Configure V2Ray secrets** (if needed):
+3. **Configure V2Ray** (optional):
    ```bash
-   cp secrets/v2ray.yaml.example secrets/v2ray.yaml
-   sops secrets/v2ray.yaml  # Edit with your values
+   ./configure-v2ray.sh 'vless://YOUR_URL_HERE'
    ```
 
 4. **Build and switch**:
    ```bash
-   sudo nixos-rebuild switch --flake .#nixos
+   ./nix.sh rebuild
    ```
 
-### Adding/Modifying Configuration
-
-1. **System packages**: Add to `hosts/nixos/configuration.nix`
-2. **User packages**: Add to `users/semyenov/home.nix`  
-3. **New module**: Create in `modules/`, add to `flake.nix` imports
-4. **Test first**: Always run `./test-config.sh` and `nixos-rebuild test` before switch
-5. **Enable optional services**:
-   ```nix
-   # In hosts/nixos/configuration.nix or create a local.nix
-   services.v2ray.enable = true;           # V2Ray proxy
-   services.backup.enable = true;          # Automatic backups
-   services.monitoring.enable = true;      # System monitoring
-   hardware.autoDetect.enable = true;      # Hardware auto-detection
-   ```
-
-### Secrets Management (SOPS)
+### Automated Setup
 
 ```bash
-# Initial setup (once)
-age-keygen -o ~/.config/sops/age/keys.txt
-ssh-to-age < /etc/ssh/ssh_host_ed25519_key.pub
+# Full interactive setup
+./nix.sh setup
 
-# Edit secrets
-sops secrets/v2ray.yaml
-
-# Access in config
-# config.sops.secrets.my_secret.path
+# Quick setup (auto-yes)
+./nix.sh setup -q
 ```
 
-### Troubleshooting
+## Working with Secrets
+
+### SOPS Configuration
+
+The repository uses SOPS with age keys for secret management:
+
+1. **Age key location**: `~/.config/sops/age/keys.txt`
+2. **Configuration**: `.sops.yaml` defines encryption rules
+3. **Secret files**: `secrets/*.yaml` are encrypted at rest
+
+### V2Ray Secrets
+
+V2Ray configuration expects these SOPS-encrypted fields:
+- `v2ray/server_address`: Target server
+- `v2ray/server_port`: Server port
+- `v2ray/user_id`: VLESS UUID
+- `v2ray/public_key`: Reality public key
+- `v2ray/short_id`: Reality short ID
+
+### Managing Secrets
+
+```bash
+# Edit encrypted secrets
+sops secrets/v2ray.yaml
+
+# Create new secret from template
+cp secrets/v2ray.yaml.example secrets/v2ray.yaml
+sops -e -i secrets/v2ray.yaml
+
+# Verify SOPS setup
+grep age1 .sops.yaml
+```
+
+## Adding/Modifying Configuration
+
+### System-wide Changes
+
+1. **System packages**: Edit `hosts/nixos/configuration.nix`
+2. **User packages**: Edit `users/semyenov/home.nix`
+3. **New module**: Create in `modules/`, add to `flake.nix` imports
+4. **Enable services**: Add to host configuration:
+   ```nix
+   services.v2ray.enable = true;
+   services.backup.enable = true;
+   services.monitoring.enable = true;
+   ```
+
+### Testing Changes
+
+Always test before applying:
+```bash
+# Validate syntax and configuration
+./nix.sh test
+
+# Test build without switching
+./nix.sh rebuild test
+
+# Apply if successful
+./nix.sh rebuild
+```
+
+## Common Pitfalls
+
+1. **Flake not updating**: Run `git add .` before rebuild - flakes only see staged/committed files
+2. **SOPS decryption fails**: Ensure age key exists at `~/.config/sops/age/keys.txt`
+3. **Hardware config missing**: Must generate with `nixos-generate-config --dir hosts/nixos/`
+4. **Service failures**: Check with `systemctl status <service>` and `journalctl -xeu <service>`
+5. **Disk space issues**: Run `./nix.sh clean` to remove old generations
+6. **Home Manager conflicts**: Creates `.backup` files when configs conflict with existing files
+
+## Troubleshooting
 
 ```bash
 # System logs
 journalctl -xe
 journalctl -u v2ray.service  # Service-specific
 
-# Build errors
-nixos-rebuild build --flake .#nixos --show-trace
+# Build errors with trace
+./nix.sh rebuild -v
 
-# Home Manager errors  
+# Home Manager errors
 home-manager switch --flake .#semyenov --show-trace
 
 # Check generation differences
 nix profile diff-closures --profile /nix/var/nix/profiles/system
 
 # Garbage collection
-sudo nix-collect-garbage -d
+./nix.sh clean
+
+# Store optimization
 nix-store --optimise
 ```
 
-## Important Notes
+## Script Library (`scripts/lib/common.sh`)
 
-- **V2Ray is disabled by default** - Enable in host configuration when secrets are configured
-- **SOPS keys must be configured** - The placeholder keys in .sops.yaml won't work
-- **Home Manager conflicts** - Creates .backup files when configs conflict with existing files
-- **Hardware config is not in git** - Must be generated per system
-- **Wayland is default** - Electron apps have X11 fallback configurations available
+The common library provides extensive utilities for all scripts:
+
+### Logging Functions
+- `log_debug`, `log_info`, `log_warn`, `log_error`, `log_critical`
+- `print_success`, `print_warning`, `print_error`, `print_info`, `print_step`
+- `print_header` - Section headers
+- `spinner` - Progress spinner for long operations
+- `progress_bar` - Progress bar for batch operations
+
+### Utility Functions
+- `command_exists` - Check if command is available
+- `is_root`, `require_root`, `require_non_root` - Permission checks
+- `confirm` - Interactive confirmations
+- `retry_with_backoff` - Retry failed operations
+- `create_temp_file`, `create_temp_dir` - Temporary file management
+- `acquire_lock`, `release_lock` - Script locking
+- `backup_file` - Create timestamped backups
+- `check_requirements` - Verify required commands
+- `parse_options` - Standard option parsing
+
+### Error Handling
+- `setup_error_handling` - Enable comprehensive error trapping
+- `error_handler` - Automatic stack traces on errors
+- `cleanup_on_exit` - Cleanup temporary files and locks
+
+All scripts should source this library for consistent behavior and user experience.

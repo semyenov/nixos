@@ -37,11 +37,7 @@
   # Mount options for existing filesystems
   # These would need to be added to hardware-configuration.nix or merged properly
 
-  # Swap configuration
-  swapDevices = [{
-    device = "/var/lib/swapfile";
-    size = 16 * 1024; # 16GB
-  }];
+  # Swap configuration - moved to swapfile service below for better management
 
   # Kernel parameters for better performance
   boot.kernel.sysctl = {
@@ -67,11 +63,30 @@
     "fs.inotify.max_user_instances" = 1024;
   };
 
-  # ZRAM for compressed memory
+  # ZRAM for compressed memory (replaces traditional swap for better performance)
   zramSwap = {
     enable = true;
     algorithm = "zstd";
     memoryPercent = 50;
+    priority = 100; # Higher priority than disk swap
+  };
+
+  # Optional: Traditional swapfile (disabled by default when ZRAM is enabled)
+  # To enable, set services.swapfile.enable = true in your host configuration
+  systemd.services.mkswapfile = {
+    description = "Create swapfile";
+    wantedBy = [ "swap.target" ];
+    serviceConfig.Type = "oneshot";
+    script = ''
+      swapfile="/var/lib/swapfile"
+      if [ ! -f "$swapfile" ]; then
+        truncate -s 0 "$swapfile"
+        chattr +C "$swapfile" 2>/dev/null || true # For btrfs
+        fallocate -l 16G "$swapfile"
+        chmod 600 "$swapfile"
+        mkswap "$swapfile"
+      fi
+    '';
   };
 
   # Enable thermald for Intel CPU thermal management

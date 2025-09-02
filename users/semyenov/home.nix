@@ -70,7 +70,7 @@
       xclip
     ];
 
-    # Session variables
+    # Session variables with proper PATH handling
     sessionVariables = {
       EDITOR = "nvim";
       BROWSER = "brave";
@@ -79,12 +79,25 @@
       # Development
       PNPM_HOME = "$HOME/.local/share/pnpm";
       NPM_CONFIG_PREFIX = "$HOME/.npm-global";
-      PATH = "$PATH:$HOME/.npm-global/bin:$HOME/.local/share/pnpm";
-
+      
       # Wayland support for Electron apps
       NIXOS_OZONE_WL = "1";
       ELECTRON_OZONE_PLATFORM_HINT = "auto";
+      
+      # Additional development variables
+      CARGO_HOME = "$HOME/.cargo";
+      RUSTUP_HOME = "$HOME/.rustup";
+      GOPATH = "$HOME/go";
     };
+    
+    # Properly manage PATH
+    sessionPath = [
+      "$HOME/.local/bin"
+      "$HOME/.npm-global/bin"
+      "$HOME/.local/share/pnpm"
+      "$HOME/.cargo/bin"
+      "$HOME/go/bin"
+    ];
 
     # File associations
     file = {
@@ -185,7 +198,7 @@
         share = true;
       };
 
-      initContent = ''
+      initExtra = ''
         # Load completions
         autoload -Uz compinit && compinit
         
@@ -404,9 +417,50 @@
 
   # Services
   services = {
+    # GPG agent
+    gpg-agent = {
+      enable = true;
+      enableSshSupport = true;
+      defaultCacheTtl = 86400;
+      maxCacheTtl = 172800;
+      pinentryPackage = pkgs.pinentry-gnome3;
+    };
+    
     # Syncthing
     syncthing = {
       enable = false; # Enable if needed
+    };
+  };
+  
+  # XDG configuration
+  xdg = {
+    enable = true;
+    userDirs = {
+      enable = true;
+      createDirectories = true;
+      desktop = "$HOME/Desktop";
+      documents = "$HOME/Documents";
+      download = "$HOME/Downloads";
+      music = "$HOME/Music";
+      pictures = "$HOME/Pictures";
+      publicShare = "$HOME/Public";
+      templates = "$HOME/Templates";
+      videos = "$HOME/Videos";
+    };
+    
+    mimeApps = {
+      enable = true;
+      defaultApplications = {
+        "text/html" = "brave-browser.desktop";
+        "x-scheme-handler/http" = "brave-browser.desktop";
+        "x-scheme-handler/https" = "brave-browser.desktop";
+        "x-scheme-handler/about" = "brave-browser.desktop";
+        "x-scheme-handler/unknown" = "brave-browser.desktop";
+        "application/pdf" = "org.gnome.Evince.desktop";
+        "image/*" = "org.gnome.eog.desktop";
+        "video/*" = "mpv.desktop";
+        "audio/*" = "mpv.desktop";
+      };
     };
   };
 }

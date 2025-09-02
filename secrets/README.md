@@ -1,64 +1,223 @@
 # Secrets Management with SOPS
 
-This directory contains encrypted secrets managed by SOPS (Secrets OPerationS).
+This directory contains encrypted secrets managed by SOPS (Secrets OPerationS) with age encryption.
 
-## Setup
+## Quick Start
 
-1. **Generate an age key:**
-   ```bash
-   age-keygen -o ~/.config/sops/age/keys.txt
-   ```
+### Initial Setup
 
-2. **Convert SSH host key to age (if using SSH keys):**
-   ```bash
-   ssh-to-age < /etc/ssh/ssh_host_ed25519_key.pub
-   ```
-
-3. **Update `.sops.yaml`** with your public keys
-
-4. **Create a secret file:**
-   ```bash
-   sops secrets/example.yaml
-   ```
-
-## Usage
-
-### Creating a new secret file
 ```bash
-sops secrets/my-secret.yaml
+# Use the automated setup
+./nix.sh sops
+
+# Or manually:
+# 1. Generate age key
+age-keygen -o ~/.config/sops/age/keys.txt
+
+# 2. Get host SSH key (for system-level secrets)
+ssh-to-age < /etc/ssh/ssh_host_ed25519_key.pub
+
+# 3. Update .sops.yaml with your keys
 ```
 
-### Editing existing secrets
+### V2Ray Configuration
+
 ```bash
-sops secrets/my-secret.yaml
+# Configure V2Ray from VLESS URL
+./configure-v2ray.sh 'vless://UUID@server:port?pbk=...&sid=...'
+
+# Or manually create from template
+cp secrets/v2ray.yaml.example secrets/v2ray.yaml
+sops secrets/v2ray.yaml
 ```
 
-### Example secret file structure
+## File Structure
+
+```
+secrets/
+├── README.md           # This file
+├── v2ray.yaml         # V2Ray configuration (encrypted)
+└── v2ray.yaml.example # Template for V2Ray secrets
+```
+
+## Secret Format
+
+### V2Ray Secrets (`v2ray.yaml`)
+
 ```yaml
-# secrets/example.yaml
-github_token: ghp_xxxxxxxxxxxxxxxxxxxx
-docker_password: supersecretpassword
-wifi_passwords:
-  home: myHomeWifiPassword
-  work: myWorkWifiPassword
+v2ray:
+  server_address: "example.com"
+  server_port: 8080
+  user_id: "uuid-here"
+  public_key: "reality-public-key"
+  short_id: "short-id"
 ```
 
-## Accessing secrets in NixOS
+### Creating New Secrets
 
-Secrets are automatically decrypted during system activation and available at:
-- `/run/secrets/secret_name` - for regular secrets
-- As environment variables for services configured to use them
+```bash
+# Create and edit a new secret file
+sops secrets/my-service.yaml
 
-## Security Notes
+# Edit existing secrets
+sops secrets/v2ray.yaml
 
-1. **Never commit unencrypted secrets**
-2. **Keep your age/SSH private keys secure**
-3. **Use different keys for different environments**
-4. **Rotate secrets regularly**
-5. **Audit access to secrets**
+# Encrypt an existing plain file
+sops -e -i secrets/my-service.yaml
+
+# Decrypt to view (be careful!)
+sops -d secrets/v2ray.yaml
+```
+
+## NixOS Integration
+
+### Accessing Secrets in Configuration
+
+Secrets are automatically decrypted during system activation:
+
+```nix
+# In your NixOS module
+{
+  sops.secrets."v2ray/server_address" = {
+    sopsFile = ./secrets/v2ray.yaml;
+    nestedKeys = true;
+  };
+  
+  # Use the secret
+  services.v2ray.config.server = 
+    config.sops.secrets."v2ray/server_address".path;
+}
+```
+
+### Secret Locations at Runtime
+
+- **File secrets**: `/run/secrets/<name>`
+- **Nested secrets**: `/run/secrets/<parent>/<child>`
+- **Permissions**: Configurable per secret (owner, group, mode)
+
+## SOPS Configuration (`.sops.yaml`)
+
+The `.sops.yaml` file in the repository root defines:
+
+1. **Encryption keys**: Age public keys for users and hosts
+2. **Creation rules**: Which keys encrypt which files
+3. **Path patterns**: Automatic key selection based on file paths
+
+Example structure:
+```yaml
+keys:
+  - &user_semyenov age1...  # User key
+  - &host_nixos age1...     # Host key
+
+creation_rules:
+  - path_regex: secrets/[^/]+\.(yaml|json)$
+    key_groups:
+      - age:
+          - *user_semyenov
+          - *host_nixos
+```
+
+## Security Best Practices
+
+1. **Key Management**
+   - Store age private key securely at `~/.config/sops/age/keys.txt`
+   - Set restrictive permissions: `chmod 600 ~/.config/sops/age/keys.txt`
+   - Never commit private keys
+
+2. **Secret Rotation**
+   - Regularly rotate sensitive credentials
+   - Update both the secret and the service configuration
+   - Test after rotation
+
+3. **Access Control**
+   - Use different keys for different environments
+   - Limit secret access to required services only
+   - Audit secret usage in NixOS modules
+
+4. **Git Safety**
+   - Never commit unencrypted `.yaml` files in this directory
+   - Use `.gitignore` for temporary decrypted files
+   - Always verify encryption: `file secrets/*.yaml` should show "data" not "text"
 
 ## Troubleshooting
 
-- If secrets aren't decrypting, check that your key is in the correct location
-- Ensure the `.sops.yaml` file has the correct public keys
-- Check system logs: `journalctl -u sops-nix`
+### Common Issues
+
+1. **Decryption fails during rebuild**
+   ```bash
+   # Check age key exists
+   ls -la ~/.config/sops/age/keys.txt
+   
+   # Verify key in .sops.yaml matches
+   grep "age1" ~/.config/sops/age/keys.txt
+   grep "age1" .sops.yaml
+   ```
+
+2. **SOPS can't find keys**
+   ```bash
+   # Set SOPS_AGE_KEY_FILE if needed
+   export SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt
+   ```
+
+3. **Service can't read secrets**
+   ```bash
+   # Check secret was created
+   sudo ls -la /run/secrets/
+   
+   # Check service logs
+   journalctl -u <service-name>
+   ```
+
+4. **V2Ray specific issues**
+   ```bash
+   # Verify V2Ray secrets are encrypted
+   file secrets/v2ray.yaml  # Should show "data"
+   
+   # Check V2Ray service
+   systemctl status v2ray
+   journalctl -u v2ray
+   ```
+
+### Useful Commands
+
+```bash
+# List all secrets in a file
+sops -d secrets/v2ray.yaml | yq e 'keys' -
+
+# Rotate encryption keys
+sops rotate -i secrets/v2ray.yaml
+
+# Check SOPS version
+sops --version
+
+# Validate .sops.yaml
+sops --config .sops.yaml secrets/v2ray.yaml
+
+# Emergency decrypt (use carefully!)
+age -d -i ~/.config/sops/age/keys.txt secrets/v2ray.yaml
+```
+
+## Adding New Services
+
+1. Create secret file:
+   ```bash
+   sops secrets/new-service.yaml
+   ```
+
+2. Add to NixOS module:
+   ```nix
+   sops.secrets."new-service/api_key" = {
+     sopsFile = ./secrets/new-service.yaml;
+   };
+   ```
+
+3. Use in service configuration:
+   ```nix
+   services.newService.apiKeyFile = 
+     config.sops.secrets."new-service/api_key".path;
+   ```
+
+4. Enable service and rebuild:
+   ```bash
+   ./nix.sh rebuild
+   ```

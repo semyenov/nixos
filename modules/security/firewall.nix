@@ -1,5 +1,10 @@
 { config, pkgs, lib, ... }:
 
+with lib;
+
+let
+  cfg = config.networking.firewall;
+in
 {
   # Firewall configuration
   networking.firewall = {
@@ -7,17 +12,19 @@
 
     # Allow specific TCP ports
     allowedTCPPorts = [
-      22 # SSH (if needed externally)
+      # 22 # SSH - commented out by default for security
       80 # HTTP
       443 # HTTPS
-      3000 # Development server
-      3001 # Development server
-      4200 # Angular dev server
-      5173 # Vite dev server
-      8080 # Alternative HTTP
-      8000 # Python dev server
-      9000 # PHP dev server
-    ];
+    ] ++ optionals config.services.openssh.enable [ 22 ]
+      ++ optionals (config.environment.sessionVariables ? DEVELOPMENT) [
+        3000 # Development server
+        3001 # Development server 
+        4200 # Angular dev server
+        5173 # Vite dev server
+        8000 # Python dev server
+        8080 # Alternative HTTP
+        9000 # PHP dev server
+      ];
 
     # Allow specific UDP ports
     allowedUDPPorts = [
@@ -38,20 +45,57 @@
     logRefusedPackets = false;
     logRefusedUnicastsOnly = true;
 
-    # Extra commands
+    # Extra commands with improved security rules
     extraCommands = ''
-      # Allow Docker networks
-      iptables -A INPUT -s 172.16.0.0/12 -j ACCEPT
+      # Allow Docker networks only if Docker is enabled
+      ${optionalString config.virtualisation.docker.enable ''
+        iptables -A INPUT -s 172.16.0.0/12 -j ACCEPT
+        iptables -A INPUT -s 172.17.0.0/16 -j ACCEPT
+      ''}
       
-      # Rate limiting for SSH
-      iptables -A INPUT -p tcp --dport 22 -m state --state NEW -m recent --set
-      iptables -A INPUT -p tcp --dport 22 -m state --state NEW -m recent --update --seconds 60 --hitcount 4 -j DROP
+      # Enhanced rate limiting for SSH
+      ${optionalString config.services.openssh.enable ''
+        iptables -A INPUT -p tcp --dport 22 -m state --state NEW -m recent --set --name SSH --rsource
+        iptables -A INPUT -p tcp --dport 22 -m state --state NEW -m recent --update --seconds 60 --hitcount 4 --name SSH --rsource -j DROP
+        iptables -A INPUT -p tcp --dport 22 -m state --state NEW -m recent --update --seconds 300 --hitcount 10 --name SSH --rsource -j DROP
+      ''}
+      
+      # SYN flood protection
+      iptables -N syn_flood
+      iptables -A INPUT -p tcp --syn -j syn_flood
+      iptables -A syn_flood -m limit --limit 1/s --limit-burst 3 -j RETURN
+      iptables -A syn_flood -j DROP
+      
+      # Invalid packets
+      iptables -A INPUT -m conntrack --ctstate INVALID -j DROP
+      
+      # Port scan detection and blocking
+      iptables -N port_scanning
+      iptables -A port_scanning -p tcp --tcp-flags SYN,ACK,FIN,RST RST -m limit --limit 1/s --limit-burst 2 -j RETURN
+      iptables -A port_scanning -j DROP
     '';
 
     extraStopCommands = ''
-      iptables -D INPUT -s 172.16.0.0/12 -j ACCEPT 2>/dev/null || true
-      iptables -D INPUT -p tcp --dport 22 -m state --state NEW -m recent --set 2>/dev/null || true
-      iptables -D INPUT -p tcp --dport 22 -m state --state NEW -m recent --update --seconds 60 --hitcount 4 -j DROP 2>/dev/null || true
+      # Clean up Docker rules
+      ${optionalString config.virtualisation.docker.enable ''
+        iptables -D INPUT -s 172.16.0.0/12 -j ACCEPT 2>/dev/null || true
+        iptables -D INPUT -s 172.17.0.0/16 -j ACCEPT 2>/dev/null || true
+      ''}
+      
+      # Clean up SSH rate limiting
+      ${optionalString config.services.openssh.enable ''
+        iptables -D INPUT -p tcp --dport 22 -m state --state NEW -m recent --set --name SSH --rsource 2>/dev/null || true
+        iptables -D INPUT -p tcp --dport 22 -m state --state NEW -m recent --update --seconds 60 --hitcount 4 --name SSH --rsource -j DROP 2>/dev/null || true
+        iptables -D INPUT -p tcp --dport 22 -m state --state NEW -m recent --update --seconds 300 --hitcount 10 --name SSH --rsource -j DROP 2>/dev/null || true
+      ''}
+      
+      # Clean up custom chains
+      iptables -F syn_flood 2>/dev/null || true
+      iptables -X syn_flood 2>/dev/null || true
+      iptables -F port_scanning 2>/dev/null || true
+      iptables -X port_scanning 2>/dev/null || true
+      iptables -D INPUT -p tcp --syn -j syn_flood 2>/dev/null || true
+      iptables -D INPUT -m conntrack --ctstate INVALID -j DROP 2>/dev/null || true
     '';
   };
 
@@ -96,8 +140,14 @@
     fail2ban
   ];
 
-  # Kernel hardening
+  # Enhanced kernel hardening
   boot.kernel.sysctl = {
+    # Core dumps
+    "fs.suid_dumpable" = 0;
+    
+    # Address space layout randomization
+    "kernel.randomize_va_space" = 2;
+    
     # Network hardening
     "net.ipv4.conf.all.rp_filter" = 1;
     "net.ipv4.conf.default.rp_filter" = 1;
@@ -115,9 +165,12 @@
 
     # Kernel hardening
     "kernel.unprivileged_bpf_disabled" = 1;
-    "kernel.unprivileged_userns_clone" = 0;
+    "kernel.unprivileged_userns_clone" = mkDefault 0; # May break some containers
     "kernel.kptr_restrict" = 2;
     "kernel.yama.ptrace_scope" = 1;
+    "kernel.panic" = 10; # Reboot after 10 seconds on kernel panic
+    "kernel.panic_on_oops" = 1; # Panic on oops
+    "kernel.modules_disabled" = mkDefault 0; # Set to 1 to disable module loading after boot
 
     # File system hardening
     "fs.protected_hardlinks" = 1;
