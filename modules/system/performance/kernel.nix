@@ -1,16 +1,33 @@
+# Kernel Performance Module
+# 
+# This module provides comprehensive kernel performance tuning options.
+# It allows fine-grained control over CPU scheduling, memory management,
+# network optimizations, and various kernel parameters.
+#
+# The module uses profiles to simplify configuration:
+# - balanced: Default, good for mixed workloads
+# - performance: Maximum throughput, higher power consumption
+# - low-latency: Optimized for real-time responsiveness
+# - throughput: Optimized for batch processing and servers
+#
+# All configuration values are centralized in lib/config.nix for maintainability.
+
 { config, pkgs, lib, ... }:
 
 with lib;
 
 let
   cfg = config.performance.kernel;
+  centralConfig = import ../../../lib/config.nix;
+  utils = import ../../../lib/module-utils.nix { inherit lib; };
+  perfConfig = centralConfig.performance;
 in
 {
   options.performance.kernel = {
-    enable = mkEnableOption "kernel performance optimizations";
+    enable = utils.mkServiceEnableOption "kernel-performance" "kernel performance optimizations and tuning";
 
-    profile = mkOption {
-      type = types.enum [ "balanced" "performance" "low-latency" "throughput" ];
+    profile = utils.mkEnumOption {
+      values = [ "balanced" "performance" "low-latency" "throughput" ];
       default = "balanced";
       description = ''
         Kernel optimization profile:
@@ -19,36 +36,84 @@ in
         - low-latency: Optimized for responsiveness
         - throughput: Optimized for batch processing
       '';
+      example = "performance";
     };
 
-    cpuScheduler = mkOption {
-      type = types.enum [ "performance" "ondemand" "conservative" "powersave" "schedutil" ];
+    cpuScheduler = utils.mkEnumOption {
+      values = [ "performance" "ondemand" "conservative" "powersave" "schedutil" ];
       default = "schedutil";
-      description = "CPU frequency scaling governor";
+      description = ''
+        CPU frequency scaling governor:
+        - performance: Always run at maximum frequency
+        - ondemand: Scale based on CPU load (legacy)
+        - conservative: Gradual scaling for power saving
+        - powersave: Always run at minimum frequency
+        - schedutil: Modern scheduler-based scaling (recommended)
+      '';
+      example = "performance";
     };
 
-    enableBBR2 = mkOption {
+    enableBBR2 = utils.mkModuleOption {
       type = types.bool;
       default = true;
-      description = "Enable TCP BBR v2 congestion control";
+      description = ''
+        Enable TCP BBR v2 congestion control algorithm.
+        BBR (Bottleneck Bandwidth and Round-trip time) provides:
+        - Better throughput on high-latency connections
+        - Reduced bufferbloat
+        - Improved performance for modern internet connections
+        Recommended for servers and systems with fast internet.
+      '';
+      example = true;
     };
 
-    enablePSI = mkOption {
+    enablePSI = utils.mkModuleOption {
       type = types.bool;
       default = true;
-      description = "Enable Pressure Stall Information monitoring";
+      description = ''
+        Enable Pressure Stall Information (PSI) monitoring.
+        PSI provides accurate metrics about resource pressure for:
+        - CPU stalls
+        - Memory pressure
+        - I/O delays
+        Used by systemd-oomd and other tools for better resource management.
+        Small overhead (~1% CPU) but valuable for system monitoring.
+      '';
+      example = true;
     };
 
-    transparentHugepages = mkOption {
-      type = types.enum [ "always" "madvise" "never" ];
+    transparentHugepages = utils.mkEnumOption {
+      values = [ "always" "madvise" "never" ];
       default = "madvise";
-      description = "Transparent Huge Pages configuration";
+      description = ''
+        Transparent Huge Pages (THP) configuration:
+        - always: Always use huge pages (good for databases)
+        - madvise: Only when requested by applications (balanced)
+        - never: Disable huge pages (saves memory, good for containers)
+        
+        THP can improve performance by reducing TLB misses but may
+        increase memory usage and latency for some workloads.
+      '';
+      example = "madvise";
     };
 
-    enableMitigations = mkOption {
+    enableMitigations = utils.mkModuleOption {
       type = types.bool;
       default = true;
-      description = "Enable CPU vulnerability mitigations (disable for performance)";
+      description = ''
+        Enable CPU vulnerability mitigations (Spectre, Meltdown, etc.).
+        
+        WARNING: Disabling mitigations can improve performance by 5-30%
+        but exposes the system to known CPU vulnerabilities.
+        
+        Only disable on:
+        - Isolated systems
+        - Gaming machines
+        - Development environments
+        
+        NEVER disable on production servers or multi-user systems.
+      '';
+      example = true;
     };
   };
 
@@ -97,23 +162,23 @@ in
       {
         # Core settings
         "kernel.sched_autogroup_enabled" = 1;
-        "kernel.sched_cfs_bandwidth_slice_us" = 3000;
+        "kernel.sched_cfs_bandwidth_slice_us" = perfConfig.timing.schedCfsBandwidth;
 
         # I/O settings
-        "vm.dirty_expire_centisecs" = if cfg.profile == "performance" then 3000 else 1500;
-        "vm.dirty_writeback_centisecs" = if cfg.profile == "performance" then 500 else 1500;
+        "vm.dirty_expire_centisecs" = if cfg.profile == "performance" then perfConfig.timing.dirtyExpireCentisecs.performance else perfConfig.timing.dirtyExpireCentisecs.default;
+        "vm.dirty_writeback_centisecs" = if cfg.profile == "performance" then perfConfig.timing.dirtyWritebackCentisecs.performance else perfConfig.timing.dirtyWritebackCentisecs.default;
 
         # Network - TCP congestion control
         "net.ipv4.tcp_congestion" = if cfg.enableBBR2 then "bbr2" else "bbr";
         "net.core.default_qdisc" = "cake";
 
         # Network buffers
-        "net.core.rmem_default" = 262144;
-        "net.core.wmem_default" = 262144;
-        "net.core.rmem_max" = 67108864;
-        "net.core.wmem_max" = 67108864;
-        "net.ipv4.tcp_rmem" = "4096 262144 67108864";
-        "net.ipv4.tcp_wmem" = "4096 262144 67108864";
+        "net.core.rmem_default" = perfConfig.memory.buffers.rmemDefault;
+        "net.core.wmem_default" = perfConfig.memory.buffers.wmemDefault;
+        "net.core.rmem_max" = perfConfig.memory.buffers.rmemMax;
+        "net.core.wmem_max" = perfConfig.memory.buffers.wmemMax;
+        "net.ipv4.tcp_rmem" = perfConfig.memory.buffers.tcpMem;
+        "net.ipv4.tcp_wmem" = perfConfig.memory.buffers.tcpMem;
 
         # TCP optimization
         "net.ipv4.tcp_fastopen" = mkDefault 3;

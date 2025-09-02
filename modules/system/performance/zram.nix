@@ -4,13 +4,16 @@ with lib;
 
 let
   cfg = config.performance.zram;
+  centralConfig = import ../../../lib/config.nix;
+  utils = import ../../../lib/module-utils.nix { inherit lib; };
+  perfConfig = centralConfig.performance;
 in
 {
   options.performance.zram = {
-    enable = mkEnableOption "ZRAM compressed memory swap";
+    enable = utils.mkServiceEnableOption "zram" "ZRAM compressed memory swap for improved performance";
 
-    algorithm = mkOption {
-      type = types.enum [ "lzo" "lz4" "zstd" "lzo-rle" ];
+    algorithm = utils.mkEnumOption {
+      values = [ "lzo" "lz4" "zstd" "lzo-rle" ];
       default = "zstd";
       description = ''
         Compression algorithm for ZRAM.
@@ -19,10 +22,10 @@ in
         - lzo: Good compression but slower
         - lzo-rle: Improved LZO for better compression
       '';
+      example = "lz4";
     };
 
-    memoryPercent = mkOption {
-      type = types.int;
+    memoryPercent = utils.mkPercentageOption {
       default = 50;
       description = "Percentage of RAM to use for ZRAM devices";
     };
@@ -39,8 +42,9 @@ in
       description = "Priority of ZRAM swap devices (higher = preferred)";
     };
 
-    swappiness = mkOption {
-      type = types.int;
+    swappiness = utils.mkIntRangeOption {
+      min = 0;
+      max = 200;
       default = 180;
       description = ''
         Swappiness value for ZRAM (0-200).
@@ -100,7 +104,7 @@ in
       "vm.dirty_ratio" = 50;
 
       # Min free kbytes - lower for better memory utilization
-      "vm.min_free_kbytes" = mkDefault 65536;
+      "vm.min_free_kbytes" = mkDefault perfConfig.memory.minFreeKbytes;
     };
 
     # Configure writeback if specified

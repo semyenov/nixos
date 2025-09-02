@@ -61,37 +61,29 @@
             # Hardware configuration
             ./hosts/nixos/hardware-configuration.nix
 
-            # Core modules
-            ./modules/core/boot.nix
-            ./modules/core/nix.nix
+            # Module imports using index files for better organization
+            # Modules are loaded in priority order (higher priority = earlier loading)
 
-            # Hardware modules
-            ./modules/hardware/nvidia.nix
-            ./modules/hardware/auto-detect.nix
+            # Core modules (Priority: 100)
+            ./modules/core/index.nix
 
-            # Desktop modules
-            ./modules/desktop/gnome.nix
+            # Hardware modules (Priority: 90)
+            ./modules/hardware/index.nix
 
-            # Service modules (using index files)
-            ./modules/services # Imports all service modules via default.nix
+            # System modules (Priority: 85)
+            ./modules/system/index.nix
 
-            # Development modules (using index files)
-            ./modules/development # Imports all development modules via default.nix
+            # Security modules (Priority: 80)
+            ./modules/security/index.nix
 
-            # Security modules
-            ./modules/security/firewall.nix
-            ./modules/security/hardening.nix
+            # Service modules (Priority: 70)
+            ./modules/services/index.nix
 
-            # Performance modules (new modular system)
-            ./modules/system/performance/zram.nix
-            ./modules/system/performance/kernel.nix
-            ./modules/system/performance/filesystem.nix
+            # Desktop modules (Priority: 60)
+            ./modules/desktop/index.nix
 
-            # Maintenance modules
-            ./modules/system/maintenance/auto-update.nix
-
-            # Compatibility module (uses new modules)
-            ./modules/system/optimization.nix
+            # Development modules (Priority: 40)
+            ./modules/development/index.nix
 
             # Home Manager
             home-manager.nixosModules.home-manager

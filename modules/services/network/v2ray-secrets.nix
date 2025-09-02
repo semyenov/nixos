@@ -208,7 +208,7 @@ in
 
     # Open firewall ports for local proxy
     networking.firewall = {
-      allowedTCPPorts = [ 1080 8118 ];
+      allowedTCPPorts = [ ports.socks ports.http ];
     };
 
     # Add v2ray package
