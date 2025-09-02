@@ -308,7 +308,9 @@
     name = "datascience";
     buildInputs = with pkgs; [
       # Python with data science packages
-      (python312.withPackages (ps: with ps; [
+      (python312.withPackages (ps: with ps;
+      # Core packages that work everywhere
+      [
         numpy
         pandas
         scipy
@@ -321,11 +323,16 @@
         ipython
         statsmodels
         pytorch
-        tensorflow
-        keras
         xgboost
         lightgbm
-      ]))
+      ] ++
+      # TensorFlow and Keras only on supported platforms
+      # (not on x86_64-darwin/Intel Macs)
+      (if (pkgs.stdenv.isLinux || pkgs.stdenv.isAarch64) then [
+        tensorflow
+        keras
+      ] else [ ])
+      ))
 
       # R environment
       R
@@ -342,8 +349,12 @@
       echo "Data Science Environment"
       echo "Python with ML/DS packages loaded"
       echo "R: $(R --version | head -n1)"
-      echo "Julia: $(julia --version)"
-      jupyter lab
+      ${
+        if (pkgs.stdenv.isLinux || pkgs.stdenv.isAarch64) then
+          ''echo "TensorFlow and Keras: Available"''
+        else
+          ''echo "TensorFlow and Keras: Not available on x86_64-darwin (Intel Mac)"''
+      }
     '';
   };
 
