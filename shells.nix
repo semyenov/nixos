@@ -6,44 +6,44 @@
     name = "nixos-config-dev";
     buildInputs = with pkgs; [
       # Nix tools
-      nixpkgs-fmt      # Format nix files
-      nil              # Nix LSP
-      statix           # Lint nix files
-      deadnix          # Find dead nix code
-      nix-tree         # Visualize dependencies
-      nix-diff         # Diff nix derivations
-      nix-prefetch     # Prefetch sources
+      nixpkgs-fmt # Format nix files
+      nil # Nix LSP
+      statix # Lint nix files
+      deadnix # Find dead nix code
+      nix-tree # Visualize dependencies
+      nix-diff # Diff nix derivations
+      nix-prefetch # Prefetch sources
       nix-output-monitor # Better nix build output
-      nvd              # Nix version diff
-      
+      nvd # Nix version diff
+
       # Task automation
-      go-task          # Task runner
-      
+      go-task # Task runner
+
       # Secrets management
-      sops             # Encrypt/decrypt secrets
-      age              # Encryption tool
-      ssh-to-age       # Convert SSH keys to age
-      
+      sops # Encrypt/decrypt secrets
+      age # Encryption tool
+      ssh-to-age # Convert SSH keys to age
+
       # Git tools
-      git              # Version control
-      gh               # GitHub CLI
-      git-crypt        # Transparent file encryption in git
-      
+      git # Version control
+      gh # GitHub CLI
+      git-crypt # Transparent file encryption in git
+
       # System tools
-      htop             # Process viewer
-      btop             # Better process viewer
-      ncdu             # Disk usage analyzer
-      tree             # Directory tree viewer
-      jq               # JSON processor
-      yq               # YAML processor
-      ripgrep          # Fast grep
-      fd               # Fast find
-      bat              # Better cat
-      eza              # Better ls
-      
+      htop # Process viewer
+      btop # Better process viewer
+      ncdu # Disk usage analyzer
+      tree # Directory tree viewer
+      jq # JSON processor
+      yq # YAML processor
+      ripgrep # Fast grep
+      fd # Fast find
+      bat # Better cat
+      eza # Better ls
+
       # Documentation
-      mdbook           # Create books from markdown
-      pandoc           # Document converter
+      mdbook # Create books from markdown
+      pandoc # Document converter
     ];
 
     shellHook = ''
@@ -198,7 +198,7 @@
       pkg-config
       gdb
       lldb
-      valgrind
+      # valgrind  # Broken on macOS
       clang-tools
       cppcheck
       doxygen
@@ -242,20 +242,20 @@
 
       # CI/CD
       github-cli
-      gitlab
-      jenkins
+      # gitlab  # Linux-only
+      # jenkins  # Platform-specific
 
       # Container tools
       docker-compose
       podman
-      buildah
+      # buildah  # May have platform issues
       skopeo
       dive
 
-      # Monitoring
-      prometheus
-      grafana
-      telegraf
+      # Monitoring  
+      # prometheus  # Server app, may have issues
+      # grafana  # Server app, may have issues
+      # telegraf  # May have platform issues
     ];
 
     shellHook = ''
@@ -327,10 +327,10 @@
 
       # R environment
       R
-      rstudio
+      # rstudio  # GUI app, platform-specific
 
-      # Julia
-      julia
+      # Julia - Linux-only
+      # julia
 
       # Tools
       quarto
@@ -382,24 +382,24 @@
     buildInputs = with pkgs; [
       # Network tools
       nmap
-      masscan
-      zmap
+      # masscan  # Linux-only (requires glibc)
+      # zmap  # Marked as broken in nixpkgs
       netcat
       socat
       tcpdump
-      wireshark
+      # wireshark  # GUI app, platform-specific
 
       # Web security
-      burpsuite
-      zap
+      # burpsuite  # GUI app, platform-specific
+      # zap  # GUI app, platform-specific
       nikto
       sqlmap
       gobuster
       ffuf
-      wfuzz
+      # wfuzz  # May have Linux dependencies
 
       # Vulnerability scanners
-      metasploit
+      # metasploit  # Linux-only (requires glibc)
       nuclei
       trivy
       grype
@@ -407,12 +407,12 @@
       # Password tools
       hashcat
       john
-      hydra
+      # hydra  # May have Linux dependencies
 
       # Forensics
       binwalk
-      foremost
-      volatility3
+      # foremost  # Linux-only
+      # volatility3  # May have Linux dependencies
 
       # Crypto
       openssl

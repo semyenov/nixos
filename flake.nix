@@ -24,10 +24,10 @@
   outputs = { self, nixpkgs, home-manager, sops-nix, nixos-hardware, ... }@inputs:
     let
       system = "x86_64-linux";
-      
+
       # Support multiple systems for development shells
       supportedSystems = [ "x86_64-linux" "aarch64-darwin" "x86_64-darwin" "aarch64-linux" ];
-      
+
       # Helper to create outputs for all supported systems
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
 
@@ -37,7 +37,7 @@
           allowUnfree = true;
         };
       };
-      
+
       # Helper to get pkgs for any system
       pkgsFor = system: import nixpkgs {
         inherit system;
@@ -103,7 +103,8 @@
         in
         shells // {
           # Default to the nixos configuration development shell
-          default = shells.nixos or pkgs.mkShell {
+          default = if shells ? nixos then shells.nixos else
+          pkgs.mkShell {
             buildInputs = with pkgs; [
               nixpkgs-fmt
               nil
