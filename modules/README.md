@@ -27,9 +27,8 @@ System services and daemons.
 - **networking.nix** - NetworkManager, DNS, network tools
 - **audio.nix** - PipeWire audio system
 - **docker.nix** - Docker and container runtime
-- **v2ray.nix** - V2Ray proxy service (disabled by default)
-- **v2ray-sops.nix** - V2Ray SOPS secrets integration
-- **backup-simple.nix** - Backup service (optional)
+- **v2ray-secrets.nix** - V2Ray proxy with SOPS secrets (uses official NixOS module)
+- **backup.nix** - Simple backup service with BorgBackup
 - **monitoring.nix** - System monitoring (optional)
 
 ### Development (`development/`)

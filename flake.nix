@@ -55,7 +55,7 @@
             ./modules/services/networking.nix
             ./modules/services/audio.nix
             ./modules/services/docker.nix
-            ./modules/services/v2ray.nix
+            ./modules/services/v2ray-secrets.nix
             ./modules/services/backup.nix
             ./modules/services/monitoring.nix
             ./modules/development/typescript.nix
