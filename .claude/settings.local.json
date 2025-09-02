@@ -14,7 +14,9 @@
       "Bash(./nix.sh test:*)",
       "Bash(task:*)",
       "Bash(sed:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(nix flake show:*)",
+      "Bash(nix --extra-experimental-features 'nix-command flakes' flake show)"
     ],
     "deny": [],
     "ask": []

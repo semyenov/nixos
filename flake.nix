@@ -24,8 +24,22 @@
   outputs = { self, nixpkgs, home-manager, sops-nix, nixos-hardware, ... }@inputs:
     let
       system = "x86_64-linux";
+      
+      # Support multiple systems for development shells
+      supportedSystems = [ "x86_64-linux" "aarch64-darwin" "x86_64-darwin" "aarch64-linux" ];
+      
+      # Helper to create outputs for all supported systems
+      forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
 
       pkgs = import nixpkgs {
+        inherit system;
+        config = {
+          allowUnfree = true;
+        };
+      };
+      
+      # Helper to get pkgs for any system
+      pkgsFor = system: import nixpkgs {
         inherit system;
         config = {
           allowUnfree = true;
@@ -81,9 +95,10 @@
         };
       };
 
-      # Development shells
-      devShells.${system} =
+      # Development shells for all supported systems
+      devShells = forAllSystems (system:
         let
+          pkgs = pkgsFor system;
           shells = import ./shells.nix { inherit pkgs; };
         in
         shells // {
@@ -96,23 +111,19 @@
               sops
               age
               ssh-to-age
+              go-task
             ];
 
             shellHook = ''
               echo "NixOS development environment"
-              echo "Commands:"
-              echo "  nixos-rebuild switch --flake .#nixos"
-              echo "  nix flake update"
-              echo "  nixpkgs-fmt ."
+              echo "Available shells: typescript, python, rust, go, cpp, database, datascience, devops, mobile, security"
+              echo "Run 'task shell:<name>' or 'nix develop .#<name>'"
             '';
           };
-        };
+        });
 
-      formatter = nixpkgs.lib.genAttrs [ "x86_64-linux" "aarch64-darwin" ] (system:
-        (import nixpkgs {
-          inherit system;
-          config = { allowUnfree = true; };
-        }).nixpkgs-fmt
+      formatter = forAllSystems (system:
+        (pkgsFor system).nixpkgs-fmt
       );
     };
 }
