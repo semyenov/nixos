@@ -107,8 +107,8 @@
     # Enable power profiles daemon
     power-profiles-daemon.enable = true;
 
-    # Enable v2ray proxy
-    v2ray.enable = true;
+    # V2Ray is configured via v2rayWithSecrets module when needed
+    # v2ray.enable = true;  # Commented out - use services.v2rayWithSecrets.enable instead
   };
 
   # XDG portal for Flatpak
