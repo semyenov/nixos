@@ -1,14 +1,12 @@
 # Security Module Index
-# Security-related modules for system hardening
-# Includes firewall, secrets management, and security profiles
+# Security and hardening configuration modules
+# Includes firewall, hardening, and security policies
 
 { config, pkgs, lib, ... }:
 
 {
   imports = [
-    ./sops.nix # SOPS secret management (must load first)
-    ./firewall.nix # Firewall and network security
-    ./hardening.nix # System hardening profiles
+    ./firewall.nix # Firewall configuration and fail2ban
+    ./hardening.nix # System hardening and security policies
   ];
-
 }

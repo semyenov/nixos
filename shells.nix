@@ -1,99 +1,67 @@
 # Development Shells
-# Modular shell environments with shared base and specialized extensions
+# Simplified shell environments for different development workflows
 
 { pkgs ? import <nixpkgs> { } }:
 
 let
   inherit (pkgs) lib;
-  # Base shell with common development tools
-  baseShell = pkgs.mkShell {
-    name = "base-dev";
-    buildInputs = with pkgs; [
-      # Core development tools
-      git
-      gh
-      jq
-      yq
-      ripgrep
-      fd
-      bat
-      eza
-      tree
-      htop
-      btop
-      ncdu
-    ];
 
-    shellHook = ''
-      # Set up useful aliases
-      alias ll="eza -la --icons"
-      alias la="eza -a --icons"
-      alias lt="eza --tree --icons"
-    '';
-  };
+  # Common development tools across all shells
+  commonTools = with pkgs; [
+    git
+    gh
+    jq
+    yq
+    ripgrep
+    fd
+    bat
+    eza
+    tree
+    htop
+    btop
+    ncdu
+  ];
 
-  # Create specialized shell by extending base shell
-  mkSpecializedShell = name: description: extraPackages: extraHook:
-    baseShell.overrideAttrs (oldAttrs: {
-      name = "${name}-dev";
-      buildInputs = oldAttrs.buildInputs ++ extraPackages;
-      shellHook = oldAttrs.shellHook + "\n" + ''
-        echo "🚀 ${description}"
-        echo "📝 Project: $(pwd)"
-        echo "🌿 Git branch: $(git branch --show-current 2>/dev/null || echo 'not in git repo')"
-        echo ""
-      '' + extraHook;
-    });
+  # Common shell hook with aliases
+  commonHook = ''
+    alias ll="eza -la --icons"
+    alias la="eza -a --icons"  
+    alias lt="eza --tree --icons"
+    echo "📝 Project: $(pwd)"
+    echo "🌿 Git: $(git branch --show-current 2>/dev/null || echo 'not in git repo')"
+  '';
 in
 {
-  # NixOS configuration development shell
-  nixos = mkSpecializedShell
-    "NixOS Configuration"
-    "NixOS Configuration Development Environment"
-    (with pkgs; [
-      # Nix tools
+  # NixOS configuration development
+  nixos = pkgs.mkShell {
+    name = "nixos-dev";
+    buildInputs = commonTools ++ (with pkgs; [
       nixpkgs-fmt
       nil
       statix
       deadnix
       nix-tree
-      nix-diff
-      nix-prefetch
       nix-output-monitor
-      nvd
-
-      # Task automation
       go-task
-
-      # Secrets management
       sops
       age
       ssh-to-age
       git-crypt
-
-      # Documentation
       mdbook
       pandoc
-    ])
-    ''
-      echo "📦 Available tools:"
-      echo "  • Nix: nixpkgs-fmt, nil, statix, deadnix, nix-tree"
-      echo "  • Task: task (run 'task --list-all' for commands)"
-      echo "  • Secrets: sops, age"
-      echo "  • Git: git, gh"
-      echo ""
-      echo "🔧 Quick commands:"
-      echo "  task test       - Run all tests"
-      echo "  task rebuild    - Rebuild system"
-      echo "  task format     - Format nix files"
-      echo "  task clean      - Clean old generations"
+    ]);
+
+    shellHook = commonHook + ''
+      echo "🚀 NixOS Configuration Development"
+      echo "Tools: nixpkgs-fmt, nil, statix, sops, task"
+      echo "Commands: task test | task rebuild | task format"
     '';
+  };
 
   # Web development (TypeScript/JavaScript)
-  web = mkSpecializedShell
-    "Web Development"
-    "TypeScript/JavaScript Development Environment"
-    (with pkgs; [
+  web = pkgs.mkShell {
+    name = "web-dev";
+    buildInputs = commonTools ++ (with pkgs; [
       nodejs_22
       nodePackages.pnpm
       nodePackages.yarn
@@ -103,31 +71,29 @@ in
       nodePackages.prettier
       bun
       deno
-    ])
-    ''
-      echo "Node: $(node --version)"
-      echo "TypeScript: $(tsc --version)"
-      echo "Available runtimes: node, bun, deno"
-      echo "Package managers: npm, yarn, pnpm"
+    ]);
+
+    shellHook = commonHook + ''
+      echo "🌐 Web Development Environment"
+      echo "Node: $(node --version) | TypeScript: $(tsc --version)"
+      echo "Runtimes: node, bun, deno | Managers: npm, yarn, pnpm"
     '';
+  };
 
   # Systems programming (Rust/Go/C++)
-  systems = mkSpecializedShell
-    "Systems Programming"
-    "Rust/Go/C++ Development Environment"
-    (with pkgs; [
+  systems = pkgs.mkShell {
+    name = "systems-dev";
+    buildInputs = commonTools ++ (with pkgs; [
       # Rust
       rustc
       cargo
       rust-analyzer
       rustfmt
       clippy
-
-      # Go
+      # Go  
       go
       gopls
       golangci-lint
-
       # C/C++
       gcc
       clang
@@ -135,26 +101,20 @@ in
       ninja
       gdb
       pkg-config
-    ] ++ lib.optionals pkgs.stdenv.isLinux [
-      # Linux-only tools
-      valgrind
-    ])
-    ''
-      echo "🦀 Rust: $(rustc --version)"
-      echo "🐹 Go: $(go version)"
-      echo "🔧 C/C++: $(gcc --version | head -1)"
-      echo ""
-      echo "Available tools:"
-      echo "  • Rust: cargo, rust-analyzer, clippy"
-      echo "  • Go: go, gopls, golangci-lint"
-      echo "  • C/C++: gcc, clang, cmake, gdb"
-    '';
+    ] ++ lib.optionals pkgs.stdenv.isLinux [ valgrind ]);
 
-  # Data & DevOps
-  ops = mkSpecializedShell
-    "Data & DevOps"
-    "Data Science & DevOps Environment"
-    (with pkgs; [
+    shellHook = commonHook + ''
+      echo "⚙️  Systems Programming Environment"
+      echo "🦀 Rust: $(rustc --version | cut -d' ' -f2)"
+      echo "🐹 Go: $(go version | cut -d' ' -f3)"
+      echo "🔧 C/C++: $(gcc --version | head -1 | cut -d' ' -f3)"
+    '';
+  };
+
+  # Data science & DevOps
+  ops = pkgs.mkShell {
+    name = "ops-dev";
+    buildInputs = commonTools ++ (with pkgs; [
       # Python data science
       python311
       python311Packages.pip
@@ -164,15 +124,14 @@ in
       python311Packages.numpy
       python311Packages.matplotlib
 
-      # DevOps tools  
+      # DevOps tools
       docker
       docker-compose
       kubectl
-      helm
       terraform
       ansible
 
-      # Database tools
+      # Databases  
       postgresql
       sqlite
       redis
@@ -180,24 +139,20 @@ in
       # Monitoring
       prometheus
       grafana
-    ])
-    ''
-      echo "🐍 Python: $(python --version)"
-      echo "🐳 Docker: $(docker --version)"
-      echo "☸️  Kubernetes: $(kubectl version --client --short 2>/dev/null || echo 'kubectl available')"
-      echo ""
-      echo "Available tools:"
-      echo "  • Python: pip, virtualenv, jupyter, pandas, numpy"
-      echo "  • DevOps: docker, kubectl, terraform, ansible"
-      echo "  • Databases: postgresql, sqlite, redis"
-      echo "  • Monitoring: prometheus, grafana"
-    '';
+    ] ++ lib.optionals pkgs.stdenv.isLinux [ helm ]);
 
-  # Security & mobile (consolidated)
-  mobile = mkSpecializedShell
-    "Mobile & Security"
-    "Mobile Development & Security Testing Environment"
-    (with pkgs; [
+    shellHook = commonHook + ''
+      echo "🔧 Data Science & DevOps Environment" 
+      echo "🐍 Python: $(python --version)"
+      echo "🐳 Docker: $(docker --version | cut -d' ' -f3 | tr -d ',')"
+      echo "Tools: kubectl, terraform, ansible, jupyter, pandas"
+    '';
+  };
+
+  # Mobile development & security testing
+  mobile = pkgs.mkShell {
+    name = "mobile-dev";
+    buildInputs = commonTools ++ (with pkgs; [
       # Mobile development
       flutter
       android-tools
@@ -215,18 +170,13 @@ in
       socat
       curl
       wget
-    ] ++ lib.optionals (pkgs.stdenv.system == "x86_64-linux") [
-      # Platform-specific packages
-      android-studio
-    ])
-    ''
-      echo "📱 Flutter: $(flutter --version | head -1)"
-      echo "🔒 Security tools: nmap, wireshark, openssl, gnupg"
+    ] ++ lib.optionals (pkgs.stdenv.system == "x86_64-linux") [ android-studio ]);
+
+    shellHook = commonHook + ''
+      echo "📱 Mobile Development & Security Environment"
+      echo "🎯 Flutter: $(flutter --version | head -1 | cut -d' ' -f2)"
+      echo "🔒 Security: nmap, wireshark, openssl, gnupg"
       echo "📡 Network: netcat, socat, curl, wget"
-      echo ""
-      echo "Available environments:"
-      echo "  • Mobile: flutter, android-tools"
-      echo "  • Security: nmap, wireshark, tcpdump"
-      echo "  • Crypto: openssl, gnupg, pass"
     '';
+  };
 }

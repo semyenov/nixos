@@ -1,98 +1,22 @@
 # Minimal Profile
-# Lightweight configuration for resource-constrained systems
-# Only essential services and optimizations
+# Lightweight configuration using base profile system
 
 { config, pkgs, lib, ... }:
 
 {
-  # Conservative performance settings
-  performance = {
-    kernel = {
-      enable = true;
-      profile = "balanced";
-      cpuScheduler = "schedutil";
-      enableBBR2 = false; # Save resources
-      enablePSI = false; # Disable monitoring
-      transparentHugepages = "never"; # Save memory
-      enableMitigations = true; # Keep basic security
-    };
+  imports = [
+    (import ./base.nix { inherit config pkgs lib; profileType = "minimal"; })
+  ];
 
-    zram = {
-      enable = true;
-      algorithm = "lz4"; # Faster, less CPU intensive
-      memoryPercent = 25; # Conservative ZRAM usage
-      swappiness = 60; # Default swappiness
-    };
-
-    filesystem = {
-      enable = false; # Disable extra optimizations
-    };
-  };
-
-  # Minimal desktop (if needed)
-  services.xserver = {
-    enable = false; # No GUI by default
-    # Uncomment for minimal desktop:
-    # displayManager.lightdm.enable = true;
-    # windowManager.i3.enable = true;
-  };
-
-  # Basic networking only
-  networking.networkmanager.enable = true;
-
-  # Minimal firewall
-  networking.firewall = {
-    enable = true;
-    allowedTCPPorts = [ ];
-    allowedUDPPorts = [ ];
-    logRefusedConnections = false; # Save resources
-  };
-
-  # No backup by default
-  services.backup.enable = false;
-
-  # Minimal security
-  security.hardening = {
-    enable = true;
-    profile = "minimal"; # Basic hardening only
-    enableSystemdHardening = false;
-    enableKernelHardening = false;
-  };
-
-  # Conservative maintenance
-  system.maintenance = {
-    autoGarbageCollection = {
-      enable = true;
-      schedule = "monthly";
-      keepDays = 7;
-      keepGenerations = 2; # Minimal history
-    };
-
-    monitoring = {
-      enable = false; # No monitoring to save resources
-    };
-
-    autoUpdate = {
-      enable = false; # Manual updates only
-    };
-  };
-
-  # Disable unnecessary services
-  services = {
-    printing.enable = false;
-    avahi.enable = false;
-    flatpak.enable = false;
-    thermald.enable = false;
-    power-profiles-daemon.enable = false;
-  };
-
-  # Minimal packages (core packages already in host config: vim, git, curl, htop, wget)
-  # Only profile-specific additions here
+  # Minimal packages (core packages already in host config)
   environment.systemPackages = [ ];
 
-  # Disable Docker
-  # Docker disabled for minimal profile
-  services.docker.enable = false;
+  # Disable all optional services
+  services.avahi.enable = false;
+  services.printing.enable = false;
+  services.flatpak.enable = false;
+  services.power-profiles-daemon.enable = false;
+  services.thermald.enable = false;
 
   # Memory optimizations
   boot.kernel.sysctl = {
@@ -102,17 +26,29 @@
     "vm.dirty_ratio" = 10;
   };
 
-  # Smaller journal size
+  # Smaller journal size  
   services.journald.extraConfig = ''
+    Storage=persistent
+    Compress=yes
     SystemMaxUse=100M
-    RuntimeMaxUse=50M
+    SystemKeepFree=500M
   '';
 
-  # Disable unnecessary kernel modules
-  boot.blacklistedKernelModules = [
-    "bluetooth"
-    "btusb"
-    "uvcvideo" # Webcam
-  ];
-}
+  # Minimal firewall logging
+  networking.firewall = {
+    allowedTCPPorts = [ ];
+    allowedUDPPorts = [ ];
+    logRefusedConnections = false;
+  };
 
+  # Conservative resource limits
+  systemd.extraConfig = ''
+    DefaultLimitNOFILE=1024:4096
+    DefaultLimitNPROC=512:1024
+  '';
+
+  # Disable unused features
+  documentation.enable = false;
+  documentation.nixos.enable = false;
+  programs.command-not-found.enable = false;
+}
