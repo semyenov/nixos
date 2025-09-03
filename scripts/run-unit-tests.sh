@@ -52,6 +52,7 @@ run_test() {
 # Run all test files
 run_test "tests/unit/module-utils.nix" "lib/module-utils.nix"
 run_test "tests/unit/validators.nix" "lib/validators.nix"
+run_test "tests/unit/v2ray-secrets.nix" "modules/services/network/v2ray-secrets.nix"
 
 echo "========================"
 echo "Test Summary:"
@@ -73,5 +74,10 @@ echo "    • Service dependency validation"
 echo "    • Path existence checks"
 echo "    • Memory size validation"
 echo "    • User/group validation"
+echo "  V2Ray Secrets:"
+echo "    • Module options and configuration"
+echo "    • SOPS secrets integration"
+echo "    • Service dependencies and security"
+echo "    • Systemd service generation"
 
 exit $EXIT_CODE

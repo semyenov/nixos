@@ -106,18 +106,26 @@ tasks:
   test:vm:
     desc: "Run VM integration tests [TEST=all|specific]" 
     cmds:
-      - cmd: echo "Running VM tests..."
       - cmd: |
           {{if eq .TEST "all"}}
-            for test in tests/vm/*.nix; do
-              echo "Testing: $(basename $test .nix)"
-              nix-build $test --no-out-link || exit 1
-            done
+            ./scripts/run-vm-tests.sh
           {{else}}
+            echo "Running single VM test: {{.TEST}}"
             nix-build tests/vm/{{.TEST}}.nix --no-out-link
           {{end}}
     vars:
       TEST: '{{.TEST | default "all"}}'
+
+  test:vm:single:
+    desc: "Run single VM test [TEST=test_name]"
+    cmds:
+      - task: test:vm
+        vars: {TEST: "{{.TEST}}"}
+    vars:
+      TEST: '{{.TEST}}'
+    preconditions:
+      - sh: test -n "{{.TEST}}"
+        msg: "TEST parameter is required (e.g., task test:vm:single TEST=v2ray-secrets)"
 
   # ========================
   # Maintenance Operations
@@ -170,13 +178,15 @@ tasks:
     desc: "Show system information"
     cmds:
       - echo "=== System Information ==="
-      - echo "NixOS Version: $(nixos-version)"
-      - "echo 'Current Generation:' && sudo nix-env --list-generations --profile /nix/var/nix/profiles/system | tail -1"
-      - echo "Flake: {{.FLAKE_REF}}"
+      - echo "NixOS Version:"
+      - nixos-version
+      - echo "Current Generation:"
+      - bash -c 'sudo nix-env --list-generations --profile /nix/var/nix/profiles/system | tail -1'
+      - echo "Flake {{.FLAKE_REF}}"
       - echo "Disk Usage:"
-      - "df -h / | tail -1"
-      - echo "Nix Store Size:"
-      - "du -sh /nix/store 2>/dev/null | cut -f1 || echo 'N/A'"
+      - bash -c 'df -h / | tail -1'
+      - echo "Nix Store Size:"  
+      - bash -c 'du -sh /nix/store | cut -f1 || echo N/A'
 
   # ========================
   # Development Shells
@@ -197,7 +207,7 @@ tasks:
     desc: "Commit changes [MSG='commit message']"
     cmds:
       - git add .
-      - git commit -m "{{.MSG}}" -m "🤖 Generated with [Claude Code](https://claude.ai/code)" -m "Co-Authored-By: Claude <noreply@anthropic.com>"
+      - git commit -m "{{.MSG}}"
     vars:
       MSG: '{{.MSG | default "chore: update configuration"}}'
     preconditions:
@@ -211,9 +221,10 @@ tasks:
       - git status --short
       - echo ""  
       - echo "=== System Status ==="
-      - echo "Current generation: $(sudo nix-env --list-generations --profile /nix/var/nix/profiles/system | tail -1)"
+      - echo "Current generation:"
+      - bash -c 'sudo nix-env --list-generations --profile /nix/var/nix/profiles/system | tail -1'
       - echo "Uncommitted flake changes:" 
-      - git diff --name-only | wc -l
+      - bash -c 'git diff --name-only | wc -l'
 
   # ========================
   # Setup Operations  

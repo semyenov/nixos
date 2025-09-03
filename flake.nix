@@ -134,5 +134,20 @@
       formatter = forAllSystems (system:
         (pkgsFor system).nixpkgs-fmt
       );
+
+      # VM Tests (only available on Linux systems)
+      checks = nixpkgs.lib.genAttrs [ "x86_64-linux" "aarch64-linux" ] (system:
+        let
+          pkgs = pkgsFor system;
+          vmTests = {
+            vm-backup = import ./tests/vm/backup.nix;
+            vm-firewall = import ./tests/vm/firewall.nix; 
+            vm-monitoring = import ./tests/vm/monitoring.nix;
+            vm-performance = import ./tests/vm/performance.nix;
+            vm-v2ray-secrets = import ./tests/vm/v2ray-secrets.nix;
+          };
+        in
+        vmTests
+      );
     };
 }

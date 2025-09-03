@@ -26,7 +26,15 @@
       "Bash(for:*)",
       "Bash(do echo \"=== $dir ===\")",
       "Bash(diff:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(./scripts/run-unit-tests.sh:*)",
+      "Bash(yaml-lint:*)",
+      "Bash(yamllint:*)",
+      "Bash(awk:*)",
+      "Bash(python3:*)",
+      "Bash(do echo \"=== $file ===\")",
+      "Bash(head:*)",
+      "Bash(./scripts/run-vm-tests.sh:*)"
     ],
     "deny": [],
     "ask": []

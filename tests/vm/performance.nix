@@ -1,11 +1,7 @@
 # VM test for performance modules
 # Tests kernel, ZRAM, and filesystem optimizations
 
-{ pkgs, lib, ... }:
-
-let
-  testUtils = import ../lib/test-utils.nix { inherit pkgs lib; };
-in
+import ../lib/test-utils.nix ({ pkgs, lib, ... }:
 {
   name = "performance";
   meta = with pkgs.lib.maintainers; {
@@ -16,7 +12,6 @@ in
     balanced = { config, pkgs, ... }: {
       imports = [
         ../../modules/system/performance/index.nix
-        testUtils.minimalConfig
       ];
 
       performance = {
@@ -47,7 +42,6 @@ in
     performance = { config, pkgs, ... }: {
       imports = [
         ../../modules/system/performance/index.nix
-        testUtils.minimalConfig
       ];
 
       performance = {
@@ -144,4 +138,4 @@ in
         print(f"Balanced profile time: {balanced_time}s")
         print(f"Performance profile time: {performance_time}s")
   '';
-}
+})

@@ -1,11 +1,8 @@
 # VM test for monitoring module
 # Tests Prometheus, Grafana, and alert functionality
 
-{ pkgs, lib, ... }:
+import ../lib/test-utils.nix ({ pkgs, lib, ... }:
 
-let
-  testUtils = import ../lib/test-utils.nix { inherit pkgs lib; };
-in
 {
   name = "monitoring";
   meta = with pkgs.lib.maintainers; {
@@ -16,7 +13,6 @@ in
     server = { config, pkgs, ... }: {
       imports = [
         ../../modules/services/system/monitoring.nix
-        testUtils.minimalConfig
       ];
 
       # Enable monitoring services
@@ -107,4 +103,4 @@ in
         rules = server.succeed("iptables -L -n")
         # Ports 9090 and 3000 should be allowed
   '';
-}
+})
