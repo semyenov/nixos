@@ -8,10 +8,10 @@ This guide helps you develop and maintain this NixOS configuration with 2025 bes
 
 ```bash
 # Recommended: Use the specialized NixOS config development shell
-task shell:nixos
+task shell TYPE=nixos
 
 # Or use nix directly
-nix develop '.#nixos'
+nix develop .#nixos
 
 # For quick access, just run (uses default shell)
 nix develop
@@ -21,17 +21,11 @@ nix develop
 
 | Shell | Command | Purpose |
 |-------|---------|---------|
-| **nixos** | `task shell:nixos` | NixOS configuration development (recommended for this project) |
-| typescript | `task shell:typescript` | Node.js, TypeScript, pnpm, yarn, bun, deno |
-| python | `task shell:python` | Python 3.12, poetry, jupyter |
-| rust | `task shell:rust` | Rust, cargo, clippy |
-| go | `task shell:go` | Go, gopls, tools |
-| cpp | `task shell:cpp` | GCC, Clang, CMake |
-| database | `task shell:database` | PostgreSQL, MySQL, Redis, MongoDB |
-| datascience | `task shell:datascience` | Python with ML/DS packages, R, Julia |
-| devops | `task shell:devops` | Kubernetes, Terraform, cloud tools |
-| mobile | `task shell:mobile` | React Native, Flutter |
-| security | `task shell:security` | Security testing tools |
+| **nixos** | `task shell TYPE=nixos` | NixOS configuration development (recommended for this project) |
+| web | `task shell TYPE=web` | Node.js 22, TypeScript, pnpm, yarn, bun, deno |
+| systems | `task shell TYPE=systems` | Rust, Go, C/C++, GCC, Clang, CMake |
+| ops | `task shell TYPE=ops` | Python 3.11, Docker, Kubernetes, Terraform, Ansible |
+| mobile | `task shell TYPE=mobile` | Flutter, Android tools, security testing tools |
 
 ## NixOS Development Shell Tools
 
@@ -78,7 +72,7 @@ task test
 
 # Check specific things
 task test:flake      # Validate flake
-task test:flake:all  # Check all systems
+task test:flake:current  # Check current system only
 task test:format     # Check formatting
 ```
 

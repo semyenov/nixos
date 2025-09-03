@@ -35,7 +35,8 @@
       "Bash(do echo \"=== $file ===\")",
       "Bash(head:*)",
       "Bash(./scripts/run-vm-tests.sh:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "WebFetch(domain:search.nixos.org)"
     ],
     "deny": [],
     "ask": []

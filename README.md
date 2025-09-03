@@ -80,43 +80,43 @@ task info
 ### Development Environments
 
 ```bash
-# TypeScript/JavaScript
-nix develop .#typescript
+# NixOS configuration development
+nix develop .#nixos
 
-# Python
-nix develop .#python
+# Web development (Node.js, TypeScript, Bun, Deno)
+nix develop .#web
 
-# Rust
-nix develop .#rust
+# Systems programming (Rust, Go, C/C++)
+nix develop .#systems
 
-# Go
-nix develop .#go
+# DevOps & Data Science (Python, Docker, K8s)
+nix develop .#ops
 
-# See all available shells
-nix flake show
+# Mobile & Security (Flutter, Android tools)
+nix develop .#mobile
+
+# Or use task command
+task shell TYPE=web
 ```
 
 ### V2Ray Proxy Setup
 
 ```bash
-# Configure from VLESS URL
-task v2ray:config URL='vless://...'
-
-# Check service status
-task v2ray:status
-
-# Test proxy connection
-task v2ray:test
-
-# View logs
-task v2ray:logs
-
 # Enable in configuration
 # Edit hosts/nixos/configuration.nix:
 # services.v2rayWithSecrets.enable = true;
 
-# Rebuild
+# Configure secrets (see secrets/README.md)
+sops secrets/v2ray.yaml
+
+# Rebuild to apply
 task rebuild
+
+# Check service status
+systemctl status v2ray-custom
+
+# View logs
+journalctl -u v2ray-custom
 ```
 
 ## Project Structure
@@ -175,8 +175,8 @@ home.packages = with pkgs; [
 
 In `hosts/nixos/configuration.nix`:
 ```nix
-# Enable V2Ray proxy
-services.v2ray.enable = true;
+# Enable V2Ray proxy with SOPS secrets
+services.v2rayWithSecrets.enable = true;
 
 # Enable backup service
 services.backup.enable = true;

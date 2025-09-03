@@ -50,7 +50,8 @@
       # Media
       vlc # Keep both media players
       mpv # Lightweight media player
-      spotify
+      spotify # Spotify client
+      tauon # Music player
       # obs-studio   # ~500 MB - streaming software
       # kdePackages.kdenlive  # ~1-2 GB with Qt6/KDE libs
       # gimp         # ~500 MB - heavy image editor
@@ -459,7 +460,7 @@
         "application/pdf" = "org.gnome.Evince.desktop";
         "image/*" = "org.gnome.eog.desktop";
         "video/*" = "mpv.desktop";
-        "audio/*" = "mpv.desktop";
+        "audio/*" = "tauon.desktop";
       };
     };
   };

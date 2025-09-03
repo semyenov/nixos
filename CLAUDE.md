@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-NixOS system configuration using Flakes and Home Manager. Modular architecture with NVIDIA graphics support, GNOME desktop, comprehensive development environment, and V2Ray proxy service. The codebase follows 2025 best practices with centralized configuration, reusable utilities, comprehensive testing, and configuration profiles.
+NixOS system configuration using Flakes and Home Manager. Modular architecture with NVIDIA graphics support, GNOME desktop, comprehensive development environment, and V2Ray proxy service.
 
 ## Commands
 
@@ -40,73 +40,57 @@ task test:vm:single TEST=backup  # Run specific VM test
 
 # Alternative test runners
 ./scripts/run-unit-tests.sh  # Detailed unit test output with coverage
+./scripts/run-vm-tests.sh     # Run VM tests directly
 
 # Rebuild variants
-task rebuild:test    # Test without switching
-task rebuild:boot    # Set as boot default
-task rebuild:trace   # Rebuild with trace
-task rebuild:dry     # Dry run
+task rebuild MODE=test    # Test without switching
+task rebuild MODE=boot    # Set as boot default
+task rebuild MODE=dry     # Dry run
+task rebuild TRACE=true   # Rebuild with trace
 
-# Specific operations
-task update:input INPUT=nixpkgs  # Update specific input
-task clean:keep KEEP=5           # Keep N generations
-task info                        # Show system information
-
-# V2Ray management
-task v2ray:config URL="vless://..."  # Configure from URL
-task v2ray:status                    # Check service status
-task v2ray:test                      # Test proxy connection
+# System management
+task status          # Show git and system status
+task info            # Show system information
+task commit MSG="..." # Commit changes with message
 
 # Setup operations
 task setup:init              # Full initial setup
 task setup:hardware          # Generate hardware config
 task setup:sops              # Setup SOPS encryption
-task setup:validate          # Validate setup
-
-# Git operations
-task git:status              # Show git status
-task git:commit MSG="..."    # Commit changes
-task git:commit:rebuild      # Auto-commit for rebuild
 ```
 
+### Taskfile.yml Key Behaviors
+
+**Important**: The `rebuild` task automatically runs `git add -A` before rebuilding. This ensures flakes see all changes (flakes only see staged/committed files).
+
+**Task Parameters**:
+- `MODE`: Controls rebuild behavior (switch/test/boot/dry)
+- `TRACE`: Enables detailed error traces when true
+- `TEST`: Specifies which VM test to run
+- `INPUT`: Specifies which flake input to update
+- `KEEP`: Number of generations to keep when cleaning
+- `DAYS`: Days threshold for garbage collection
+- `TYPE`: Development shell type to enter
+
+**Global Variables**:
+- `FLAKE_PATH`: Path to flake (defaults to current directory)
+- `HOSTNAME`: System hostname (defaults to "nixos")
+- `FLAKE_REF`: Computed as `${FLAKE_PATH}#${HOSTNAME}`
+
+**Environment**: Sets `NIXOS_OZONE_WL=1` for Wayland support
 
 ### Development Shells
 
 ```bash
 # Enter specific development environment
-nix develop .#typescript  # TypeScript/JavaScript
-nix develop .#python      # Python
-nix develop .#rust        # Rust
-nix develop .#go          # Go
-nix develop .#cpp         # C/C++
-nix develop .#devops      # DevOps tools
-nix develop .#database    # Database tools
-nix develop .#datascience # Data Science
-nix develop .#mobile      # Mobile development
-nix develop .#security    # Security testing
+nix develop .#nixos    # NixOS configuration development
+nix develop .#web      # Web development (Node.js, TypeScript, Bun, Deno)
+nix develop .#systems  # Systems programming (Rust, Go, C/C++)
+nix develop .#ops      # DevOps & Data Science (Python, Docker, K8s)
+nix develop .#mobile   # Mobile & Security (Flutter, Android, security tools)
 
-# Default development shell
-nix develop
-```
-
-### Manual Commands (Fallback)
-
-```bash
-# Direct nixos-rebuild
-sudo nixos-rebuild switch --flake .#nixos
-
-# Flake operations
-nix flake update
-nix flake check
-nix flake show
-nix flake metadata
-
-# Home Manager
-home-manager switch --flake .#semyenov
-
-# System info
-nixos-version
-nix-env --list-generations --profile /nix/var/nix/profiles/system
+# Alternative using task command
+task shell TYPE=web    # Enter web development shell
 ```
 
 ## Architecture
@@ -122,6 +106,7 @@ flake.nix                    # Entry point, defines nixosConfigurations and devS
 │   ├── module-utils.nix    # Helper functions for creating module options
 │   └── validators.nix      # Type validators and conflict detection
 ├── profiles/
+│   ├── base.nix            # Shared base configuration
 │   ├── workstation.nix     # Development-focused configuration
 │   ├── server.nix          # Production server configuration
 │   └── minimal.nix         # Lightweight configuration
@@ -130,22 +115,15 @@ flake.nix                    # Entry point, defines nixosConfigurations and devS
 │   └── hardware-configuration.nix  # Generated hardware config (not in git)
 ├── modules/
 │   ├── core/               # Boot, kernel, Nix settings (loaded first)
-│   │   └── index.nix       # Module index for auto-import
 │   ├── hardware/           # NVIDIA drivers, auto-detection
-│   │   └── index.nix       
 │   ├── desktop/            # GNOME environment
-│   │   └── index.nix       
 │   ├── services/           
-│   │   ├── index.nix       
 │   │   ├── network/        # V2Ray, networking services
 │   │   └── system/         # Backup, monitoring services
 │   ├── development/        # Dev tools and languages
-│   │   └── index.nix       
 │   ├── security/           # Firewall, SOPS, hardening
-│   │   └── index.nix       
 │   └── system/             
-│       ├── index.nix       
-│       ├── optimization.nix # Compatibility layer
+│       ├── optimization.nix # Compatibility layer for performance modules
 │       ├── performance/    # ZRAM, kernel tuning, filesystem
 │       └── maintenance/    # Auto-updates, monitoring
 ├── users/semyenov/         # Home Manager user configuration
@@ -154,7 +132,10 @@ flake.nix                    # Entry point, defines nixosConfigurations and devS
 │   ├── vm/                # VM integration tests
 │   ├── unit/               # Unit tests for utilities
 │   └── lib/                # Test helper functions
-└── scripts/lib/common.sh   # Shared bash library
+├── scripts/
+│   ├── run-unit-tests.sh   # Unit test runner
+│   └── run-vm-tests.sh     # VM test runner
+└── shells.nix              # Development shell definitions
 ```
 
 ### Module Loading Order
@@ -172,7 +153,6 @@ flake.nix                    # Entry point, defines nixosConfigurations and devS
 - **State Version**: 25.05 (DO NOT change without migration)
 - **User**: semyenov with sudo, docker, network access
 - **Shell**: ZSH with Starship prompt
-- **Development**: Node.js 22, TypeScript, Bun, Deno, multiple package managers
 
 ### Central Configuration (lib/config.nix)
 
@@ -191,21 +171,20 @@ Helper functions for consistent module creation:
 - `mkPercentageOption` - Percentage values (0-100)
 - `mkScheduleOption` - Systemd timer schedules
 - Custom types: `networkConfig`, `serviceConfig`, `cronSchedule`, `cidr`, `domain`
-- Validators: `isEmail`, `isIPv4`, `isValidPort`, `isSystemdTimer`
 
 ### Service Dependencies
 
-- `v2ray-sops.nix` requires `sops.nix` to be loaded
+- `v2ray-secrets.nix` requires `sops.nix` to be loaded
 - `backup.nix` requires valid paths and services to backup
 - `monitoring.nix` depends on network configuration
-- V2Ray service is disabled by default (enable with `services.v2ray.enable = true;`)
+- V2Ray service is disabled by default (enable with `services.v2rayWithSecrets.enable = true;`)
 
 ## Testing Infrastructure
 
 ### Unit Tests
 Located in `tests/unit/`, run with `task test:unit`:
 - `module-utils.nix` - Tests for module utility functions
-- `validators.nix` - Tests for validation system (service dependencies, paths, memory sizes)
+- `validators.nix` - Tests for validation system
 - Uses `nix-instantiate --eval` for evaluation
 - Alternative runner: `./scripts/run-unit-tests.sh` for detailed output
 
@@ -215,44 +194,10 @@ Located in `tests/vm/`, run with `task test:vm`:
 - `firewall.nix` - Tests firewall rules and fail2ban
 - `monitoring.nix` - Tests Prometheus, Grafana, and alerts
 - `performance.nix` - Tests kernel, ZRAM, and filesystem optimizations
-- Uses NixOS VM testing framework
+- `v2ray-secrets.nix` - Tests V2Ray service with SOPS secrets
 
 ### Test Utilities
-`tests/lib/test-utils.nix` provides:
-- Common VM configuration for faster tests
-- Helper functions for test patterns
-- Standardized test environment
-
-## First-Time Setup
-
-### Prerequisites
-
-1. **Generate hardware configuration**:
-   ```bash
-   sudo nixos-generate-config --dir hosts/nixos/
-   ```
-
-2. **Setup SOPS encryption**:
-   ```bash
-   task setup:sops
-   ```
-
-3. **Configure V2Ray** (optional):
-   ```bash
-   task v2ray:config URL='vless://YOUR_URL_HERE'
-   ```
-
-4. **Build and switch**:
-   ```bash
-   task rebuild
-   ```
-
-### Automated Setup
-
-```bash
-# Full interactive setup
-task setup:init
-```
+`tests/lib/test-utils.nix` provides common VM configuration and helper functions.
 
 ## Working with Secrets
 
@@ -282,9 +227,6 @@ sops secrets/v2ray.yaml
 # Create new secret from template
 cp secrets/v2ray.yaml.example secrets/v2ray.yaml
 sops -e -i secrets/v2ray.yaml
-
-# Verify SOPS setup
-grep age1 .sops.yaml
 ```
 
 ## Adding/Modifying Configuration
@@ -293,10 +235,10 @@ grep age1 .sops.yaml
 
 1. **System packages**: Edit `hosts/nixos/configuration.nix`
 2. **User packages**: Edit `users/semyenov/home.nix`
-3. **New module**: Create in `modules/`, add to appropriate subdirectory index
+3. **New module**: Create in `modules/` appropriate subdirectory
 4. **Enable services**: Add to host configuration:
    ```nix
-   services.v2ray.enable = true;
+   services.v2rayWithSecrets.enable = true;
    services.backup.enable = true;
    services.monitoring.enable = true;
    ```
@@ -314,29 +256,6 @@ imports = [
 ];
 ```
 
-### Testing Changes
-
-Always test before applying:
-```bash
-# Run all tests
-task test
-
-# Validate configuration
-task test:flake
-
-# Check formatting
-task test:format
-
-# Run unit tests
-task test:unit
-
-# Test build without switching
-task rebuild:test
-
-# Apply if successful
-task rebuild
-```
-
 ## Common Pitfalls
 
 1. **Flake not updating**: Run `git add .` before rebuild - flakes only see staged/committed files
@@ -345,66 +264,14 @@ task rebuild
 4. **Service failures**: Check with `systemctl status <service>` and `journalctl -xeu <service>`
 5. **Disk space issues**: Run `task clean` to remove old generations
 6. **Home Manager conflicts**: Creates `.backup` files when configs conflict with existing files
-7. **Module import errors**: Check module is added to appropriate index.nix file
+7. **Module import errors**: Check module is imported in host configuration
 8. **Type errors**: Use module-utils.nix helpers for consistent option types
 
-## Troubleshooting
+## Testing Scripts
 
-```bash
-# System logs
-journalctl -xe
-journalctl -u v2ray.service  # Service-specific
+The repository includes test runner scripts in `scripts/`:
 
-# Build errors with trace
-task rebuild:trace
+- **run-unit-tests.sh**: Runs unit tests with detailed output and test counts
+- **run-vm-tests.sh**: Executes VM integration tests
 
-# Home Manager errors
-home-manager switch --flake .#semyenov --show-trace
-
-# Check generation differences
-nix profile diff-closures --profile /nix/var/nix/profiles/system
-
-# Garbage collection
-task clean
-
-# Store optimization
-nix-store --optimise
-
-# Run specific VM test
-task test:vm:single TEST=firewall
-
-# Check central configuration
-nix repl
-:l <nixpkgs>
-:l ./lib/config.nix
-```
-
-## Script Library (`scripts/lib/common.sh`)
-
-The common library provides extensive utilities for all scripts:
-
-### Logging Functions
-- `log_debug`, `log_info`, `log_warn`, `log_error`, `log_critical`
-- `print_success`, `print_warning`, `print_error`, `print_info`, `print_step`
-- `print_header` - Section headers
-- `spinner` - Progress spinner for long operations
-- `progress_bar` - Progress bar for batch operations
-
-### Utility Functions
-- `command_exists` - Check if command is available
-- `is_root`, `require_root`, `require_non_root` - Permission checks
-- `confirm` - Interactive confirmations
-- `retry_with_backoff` - Retry failed operations
-- `create_temp_file`, `create_temp_dir` - Temporary file management
-- `acquire_lock`, `release_lock` - Script locking
-- `backup_file` - Create timestamped backups
-- `check_requirements` - Verify required commands
-- `parse_options` - Standard option parsing
-
-### Error Handling
-- `setup_error_handling` - Enable comprehensive error trapping
-- `error_handler` - Automatic stack traces on errors
-- `cleanup_on_exit` - Cleanup temporary files and locks
-
-All scripts should source this library for consistent behavior and user experience.
-
+These scripts provide colored output and detailed test results.
