@@ -139,12 +139,14 @@
       checks = nixpkgs.lib.genAttrs [ "x86_64-linux" "aarch64-linux" ] (system:
         let
           pkgs = pkgsFor system;
+          lib = pkgs.lib;
+          testUtils = import ./tests/lib/test-utils.nix { inherit pkgs lib; };
           vmTests = {
-            vm-backup = import ./tests/vm/backup.nix;
-            vm-firewall = import ./tests/vm/firewall.nix; 
-            vm-monitoring = import ./tests/vm/monitoring.nix;
-            vm-performance = import ./tests/vm/performance.nix;
-            vm-v2ray-secrets = import ./tests/vm/v2ray-secrets.nix;
+            vm-backup = testUtils (import ./tests/vm/backup.nix);
+            vm-firewall = testUtils (import ./tests/vm/firewall.nix);
+            vm-monitoring = testUtils (import ./tests/vm/monitoring.nix);
+            vm-performance = testUtils (import ./tests/vm/performance.nix);
+            vm-v2ray-secrets = testUtils (import ./tests/vm/v2ray-secrets.nix);
           };
         in
         vmTests

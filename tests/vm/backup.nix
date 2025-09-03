@@ -1,7 +1,7 @@
 # VM test for backup service
 # Tests that the backup service works correctly
 
-import ../lib/test-utils.nix ({ pkgs, lib, ... }:
+({ pkgs, lib, ... }:
 
 {
   name = "backup-service-test";

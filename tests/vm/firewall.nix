@@ -1,7 +1,7 @@
 # VM test for firewall configuration
 # Tests that firewall rules work correctly
 
-import ../lib/test-utils.nix ({ pkgs, lib, ... }:
+({ pkgs, lib, ... }:
 
 {
   name = "firewall-test";

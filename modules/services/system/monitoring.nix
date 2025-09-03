@@ -81,7 +81,7 @@ in
         nethogs
         iftop
         nmon
-        dstat
+        dool # Replacement for dstat
         sysstat
         lm_sensors
 

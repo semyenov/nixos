@@ -261,11 +261,7 @@ in
             recipient = "root";
           };
         };
-        defaults.monitored = ''
-          -a -o on -S on -n standby,q
-          -s (S/../.././02|L/../../6/03)
-          -W 4,35,45
-        '';
+        defaults.monitored = "-a -o on -S on -n standby,q -W 4,35,45";
       };
 
       # System health check

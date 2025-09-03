@@ -29,10 +29,10 @@
       keepassxc # Lightweight, good to have backup
 
       # Gaming (commented to save space)
-      # lutris  # ~500 MB + Wine dependencies
+      lutris  # ~500 MB + Wine dependencies
       # steam   # ~2-3 GB + runtime dependencies
       # mangohud
-      # gamemode
+      gamemode
 
       # Development (keep only essential editors)
       code-cursor # Keep cursor for development

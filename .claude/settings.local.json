@@ -34,7 +34,8 @@
       "Bash(python3:*)",
       "Bash(do echo \"=== $file ===\")",
       "Bash(head:*)",
-      "Bash(./scripts/run-vm-tests.sh:*)"
+      "Bash(./scripts/run-vm-tests.sh:*)",
+      "Bash(echo:*)"
     ],
     "deny": [],
     "ask": []

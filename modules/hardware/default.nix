@@ -7,6 +7,6 @@
 {
   imports = [
     ./nvidia.nix # NVIDIA graphics drivers
-    ./auto-detection.nix # Hardware auto-detection
+    ./auto-detect.nix # Hardware auto-detection
   ];
 }
