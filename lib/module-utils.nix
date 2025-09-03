@@ -312,30 +312,5 @@ rec {
     domain = lib.types.strMatching "^([a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,}$";
   };
 
-  # Documentation helpers
-  mkDocumentation = {
-    # Generate option documentation
-    generateOptionDocs = options:
-      concatStringsSep "\n" (
-        mapAttrsToList
-          (name: opt: ''
-            ## ${name}
-            ${opt.description or "No description"}
-            ${optionalString (opt ? default) "Default: `${toString opt.default}`"}
-            ${optionalString (opt ? example) "Example: `${toString opt.example}`"}
-          '')
-          options
-      );
-
-    # Create a module header comment
-    mkModuleHeader = { name, description, maintainer ? null, dependencies ? [ ] }:
-      ''
-        # ${name}
-        # ${description}
-        ${optionalString (maintainer != null) "# Maintainer: ${maintainer}"}
-        ${optionalString (dependencies != []) "# Dependencies: ${concatStringsSep ", " dependencies}"}
-        ${optionalString (dependencies != []) "# "}
-      '';
-  };
 }
 
